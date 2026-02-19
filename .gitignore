@@ -1,0 +1,16 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+coverage/
+
+# Runtime data (caps, receipts, keys)
+data/
+
+# Word temp/lock files
+~$*

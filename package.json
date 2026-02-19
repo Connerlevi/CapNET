@@ -1,0 +1,32 @@
+{
+  "name": "capnet",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.2.4",
+  "engines": {
+    "node": ">=18.18 <22"
+  },
+  "workspaces": [
+    "shared",
+    "proxy",
+    "sandbox",
+    "sdk",
+    "extension"
+  ],
+  "scripts": {
+    "dev": "concurrently -n proxy,sandbox -c blue,green \"npm run dev -w proxy\" \"npm run dev -w sandbox\"",
+    "start": "npm run dev",
+    "demo": "npm run demo -w sdk",
+    "demo:clean": "node -e \"const fs=require('fs');const p=require('path');const d='data';if(fs.existsSync(d)){fs.readdirSync(d).filter(f=>f.endsWith('.json')||f.endsWith('.jsonl')).forEach(f=>fs.unlinkSync(p.join(d,f)))}\" && echo Data cleared && npm run demo",
+    "demo:full": "npm run demo:clean && npm run demo",
+    "build": "npm run build:shared && npm run build:extension",
+    "build:shared": "npm run build -w shared",
+    "build:extension": "npm run build -w extension",
+    "typecheck": "tsc --noEmit -p proxy/tsconfig.json && tsc --noEmit -p sandbox/tsconfig.json && tsc --noEmit -p sdk/tsconfig.json",
+    "typecheck:all": "npm run typecheck && npm run build:extension"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

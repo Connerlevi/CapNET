@@ -1,0 +1,452 @@
+CapDoc v0.1 + Crypto + Proxy Endpoints + Extension Wiring
+Objective
+
+Implement the first real CapNet functionality end-to-end:
+
+Canonical CapDoc v0.1 schema in @capnet/shared (Zod + TS types)
+
+Ed25519 signing + verification in @capnet/shared/src/crypto.ts (tweetnacl)
+
+Proxy endpoints:
+
+POST /capability/issue
+
+POST /action/request
+
+GET /receipts
+
+Extension UI:
+
+“Generate Capability” button that calls /capability/issue
+
+“Receipts” tab that calls /receipts
+
+Scope guardrail: Keep it Phase 0. No delegation yet. No “real spend” yet. The goal is a signed capability issued, enforced, and producing receipts.
+
+Part A — Shared Schemas (replace placeholders)
+A1) Canonical Capability: CapDocV0_1
+
+File: shared/src/schemas/capdoc.ts
+Export: CapDocSchema, CapDoc, and helper unsignedCapPayloadSchema if needed.
+
+Fields (required unless noted):
+
+version: "capdoc/0.1"
+
+cap_id: string            // uuid or "cap_<timestamp>_<rand>"
+issued_at: string         // ISO8601
+not_before?: string       // ISO8601 (optional)
+expires_at: string        // ISO8601
+
+issuer: {
+  id: string              // "wallet:local" for now
+  pubkey: string          // base64 public key for issuer
+}
+
+subject: {
+  id: string              // "user:local" for now
+}
+
+executor: {
+  agent_id: string        // e.g. "agent:grocerybot"
+  agent_pubkey: string    // base64 public key used to bind executor
+}
+
+resource: {
+  type: "spend" | "sandbox_merchant" | "generic"
+  vendor: string          // "instacart" (or "sandboxmart" for now)
+}
+
+actions: Array<"spend">   // keep minimal: ["spend"]
+
+constraints: {
+  currency: "USD"         // enum; keep USD only for now
+  max_amount_cents: number
+  allowed_vendors: string[]     // allow-list, must include resource.vendor
+  blocked_categories: string[]  // e.g. ["alcohol","giftcard"]
+}
+
+revocation: {
+  mode: "strict" | "lease" | "one_time"   // phase0 supports strict/lease
+  oracle: "local_proxy"                   // phase0 constant
+}
+
+proof: {
+  alg: "ed25519"
+  sig: string             // base64 signature over canonical unsigned payload
+}
+
+
+Notes
+
+allowed_vendors will be evaluated in the proxy against ActionRequest.vendor.
+
+blocked_categories will be evaluated against ActionRequest.cart[].category.
+
+revocation.oracle is just metadata now; enforcement uses local proxy store.
+
+A2) Action schemas
+
+File: shared/src/schemas/action.ts
+
+ActionRequest
+request_id: string        // uuid
+ts: string                // ISO8601
+agent_id: string
+agent_pubkey: string      // base64
+action: "spend"
+vendor: string            // "instacart" or "sandboxmart"
+currency: "USD"
+cart: Array<{
+  sku?: string
+  name: string
+  category: string        // "grocery", "alcohol"
+  price_cents: number
+  qty: number
+}>
+
+ActionResult
+request_id: string
+decision: "allow" | "deny"
+reason: string            // stable machine-readable reason string
+receipt_id: string
+
+A3) Receipt schema
+
+File: shared/src/schemas/receipt.ts
+
+receipt_id: string
+ts: string
+
+event: "ACTION_ATTEMPT" | "ACTION_ALLOWED" | "ACTION_DENIED" | "CAP_ISSUED" | "CAP_REVOKED"
+
+cap_id?: string
+request_id?: string
+agent_id?: string
+vendor?: string
+
+summary: {
+  amount_cents?: number
+  item_count?: number
+  denied_reason?: string
+}
+
+meta: Record<string, any>   // keep flexible
+
+// Optional signing (nice-to-have now, can add in Prompt 3):
+proof?: {
+  alg: "ed25519"
+  sig: string
+  signer_pubkey: string
+}
+
+Part B — Crypto (Ed25519 signing) in shared/src/crypto.ts
+
+Requirement: implement canonical serialization + sign/verify.
+
+B1) Canonicalization
+
+Do not rely on naive JSON.stringify(obj) without stable key ordering.
+
+Implement a simple deterministic serializer:
+
+recursively sort object keys lexicographically
+
+arrays preserve order
+
+primitives as-is
+
+Export:
+
+export function stableStringify(obj: unknown): string
+
+B2) Signing API
+
+Use tweetnacl:
+
+export type Keypair = { publicKeyB64: string; secretKeyB64: string };
+
+export function generateEd25519Keypair(): Keypair
+
+export function signObjectEd25519(unsignedPayload: any, secretKeyB64: string): string // returns sigB64
+
+export function verifyObjectEd25519(unsignedPayload: any, sigB64: string, publicKeyB64: string): boolean
+
+B3) Signing what?
+
+Sign the unsigned payload with no proof field:
+
+Create function:
+
+export function capUnsignedPayload(cap: CapDoc): any
+
+
+It returns cap but with .proof removed.
+
+Then signature = signObjectEd25519(capUnsignedPayload(cap), issuerSecretKey).
+
+Part C — Proxy endpoints (Express)
+C1) Storage (Phase 0 simple)
+
+Add lightweight storage in proxy:
+
+caps store: map cap_id -> capdoc
+
+revoked set: cap_ids
+
+receipts list (append-only) and/or store in file/SQLite
+
+For now, JSONL file is acceptable:
+
+proxy/data/receipts.jsonl
+
+proxy/data/caps.json
+
+C2) Proxy keys
+
+Proxy acts as the “wallet issuer” for Phase 0 demo:
+
+Generate issuer keypair on first run; store in proxy/data/issuer_keys.json
+
+Reuse across runs.
+
+C3) Endpoints
+POST /capability/issue
+
+Input (minimal):
+
+{
+  "template": "groceries",
+  "agent_id": "agent:grocerybot",
+  "agent_pubkey": "<b64>",
+  "constraints": {
+    "max_amount_cents": 20000,
+    "allowed_vendors": ["sandboxmart"],
+    "blocked_categories": ["alcohol","giftcard"]
+  }
+}
+
+
+Behavior:
+
+Validate input with Zod
+
+Build CapDoc v0.1
+
+Ensure constraints.allowed_vendors includes vendor chosen (resource.vendor)
+
+Sign with issuer secret key; set issuer.pubkey
+
+Store cap
+
+Emit receipt: CAP_ISSUED
+
+Return CapDoc JSON
+
+Output:
+
+200 { capdoc }
+
+POST /action/request
+
+Input: ActionRequest
+
+Behavior:
+
+Validate ActionRequest
+
+Select an active capability matching:
+
+executor.agent_id === req.agent_id
+
+executor.agent_pubkey === req.agent_pubkey
+
+resource.vendor OR constraints.allowed_vendors includes req.vendor
+
+not expired; not-before satisfied
+
+not revoked
+
+signature valid (verify)
+
+Compute amount_cents = sum(item.price_cents * qty)
+
+Enforce rules:
+
+if no capability found → deny NO_CAPABILITY
+
+if revoked → deny REVOKED
+
+if vendor not allowed → deny VENDOR_NOT_ALLOWED
+
+if any category in blocked list → deny CATEGORY_BLOCKED:<category>
+
+if amount > max → deny AMOUNT_EXCEEDS_MAX
+
+else allow
+
+Emit receipts:
+
+Always ACTION_ATTEMPT
+
+Then ACTION_ALLOWED or ACTION_DENIED with reason
+
+Return ActionResult with stable reason strings
+
+Output example:
+
+{
+  "request_id":"...",
+  "decision":"deny",
+  "reason":"CATEGORY_BLOCKED:alcohol",
+  "receipt_id":"rcpt_..."
+}
+
+GET /receipts
+
+Return:
+
+last N receipts (default 100)
+
+optionally support ?since=<iso> or ?limit=200
+
+C4) Reason string conventions
+
+Use stable strings (don’t change casually):
+
+NO_CAPABILITY
+
+REVOKED
+
+CAP_EXPIRED
+
+CAP_NOT_YET_VALID
+
+BAD_SIGNATURE
+
+EXECUTOR_MISMATCH
+
+VENDOR_NOT_ALLOWED
+
+CATEGORY_BLOCKED:<category>
+
+AMOUNT_EXCEEDS_MAX
+
+ALLOWED
+
+Part D — Extension wiring (React popup)
+D1) UI changes
+
+Replace “health check only” popup with tabs:
+
+Capabilities
+
+Show “Generate Capability” button
+
+Show active cap summary (cap_id, max, vendors, expires)
+
+Receipts
+
+List latest receipts with event, time, summary
+
+D2) Generate Capability
+
+Button triggers:
+
+create or load agent pubkey from extension storage (Phase 0: generate once and store)
+
+call POST http://127.0.0.1:3100/capability/issue
+
+display success + store cap_id locally for UI display
+
+Agent identity for demo:
+
+hardcode agent_id "agent:grocerybot"
+
+use stored agent keypair (in extension storage) OR request from proxy
+
+simplest: generate agent keypair in extension with tweetnacl too, store pubkey+secret in extension local storage for now
+
+D3) Receipts tab
+
+Poll GET /receipts every 2 seconds OR refresh button
+
+Render timeline:
+
+event
+
+ts
+
+reason/amount where relevant
+
+cap_id/request_id
+
+Acceptance criteria (must all pass)
+AC1 — Cap issuance
+
+Clicking “Generate Capability” returns a valid CapDoc:
+
+version is capdoc/0.1
+
+proof.sig exists
+
+proxy verifies signature before storing
+
+Proxy emits a CAP_ISSUED receipt
+
+AC2 — Enforcement deny (blocked category)
+
+Call:
+
+POST /action/request with cart including an alcohol item
+Result:
+
+decision deny
+
+reason CATEGORY_BLOCKED:alcohol
+
+receipt timeline includes ACTION_ATTEMPT then ACTION_DENIED
+
+AC3 — Enforcement deny (overspend)
+
+Cart exceeds max_amount_cents
+
+deny AMOUNT_EXCEEDS_MAX
+
+AC4 — Enforcement allow
+
+Cart within limits:
+
+allow with reason ALLOWED
+
+receipts show allowed event
+
+AC5 — Extension receipts view
+
+Receipts tab shows at least:
+
+CAP_ISSUED
+
+ACTION_ATTEMPT
+
+ACTION_DENIED or ACTION_ALLOWED
+
+Deliverables checklist
+
+✅ shared schemas complete (capdoc/action/receipt)
+
+✅ shared crypto signing & verify (tweetnacl)
+
+✅ proxy endpoints implemented + storage
+
+✅ extension UI with Generate + Receipts
+
+✅ minimal test script in sdk/ or proxy/scripts/ that fires action requests
+
+recommended...
+
+Add a tiny CLI script: node proxy/scripts/send_action.ts to submit a sample ActionRequest (allowed + denied)
+
+Add npm run demo:actions to fire both requests and populate receipts
+
+Express + webpack MV3 + npm workspaces is absolutely fine here. Keeping it simple is the right call.

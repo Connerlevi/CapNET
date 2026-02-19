@@ -1,0 +1,744 @@
+Below is a concrete Cap-Packet v0.1 spec direction (canonical encoding + scope grammar + attenuation + lease semantics + revocation pointers), then the Agent Sandbox Wallet (what it is, where it runs, how it integrates), then first-oracle + interop/conformance.
+
+1) CapNet “Cap-Packet” v0.1 — an implementable atomic authority object
+Canonical representation
+
+Use CBOR for wire-format (compact, deterministic), with a JSON rendering for dev UX.
+
+Wire: application/cap+cbor
+
+Dev: application/cap+json (lossless round-trip)
+
+Canonicalization: deterministic CBOR (so signatures are stable)
+
+Object model: two layers
+
+Capability = what authority exists (portable artifact)
+
+Proof = why it’s valid (signature chain + optional attestation)
+
+Capability fields (normative)
+
+Here’s a tight v0.1 schema (JSON rendering). (Names are short for wire efficiency; you can alias in dev tooling.)
+
+{
+  "v": "cap/0.1",
+
+  "rid": "res:stripe:acct_123|card_ending_4242",
+  "act": ["spend", "refund"],
+
+  "ctx": {
+    "time": { "nbf": 1738290000, "exp": 1738297200 },
+    "geo": { "mode": "near", "radius_m": 50, "anchor": "device:owner_phone" }
+  },
+
+  "lim": {
+    "money": { "cur": "USD", "max": 50.00 },
+    "rate": { "max_calls": 3, "per_s": 3600 }
+  },
+
+  "pol": {
+    "allow": [
+      { "vendor": ["delta.com", "united.com"] },
+      { "mcc": [3000, 3050] }
+    ],
+    "deny": [
+      { "item": ["alcohol", "gambling"] }
+    ]
+  },
+
+  "attn": {
+    "mode": "monotone",
+    "rules": [
+      { "field": "lim.money.max", "op": "mul", "k": 0.5 },
+      { "field": "ctx.time.exp", "op": "min", "delta_s": 1800 }
+    ],
+    "delegable": true,
+    "max_depth": 2
+  },
+
+  "exec": {
+    "bind": "pubkey_hash:8f3a...d91c",
+    "attest": {
+      "type": "tee",
+      "req": ["non-exportable-key", "measured-runtime"]
+    }
+  },
+
+  "rev": {
+    "mode": "lease",
+    "lease_s": 600,
+    "ptr": [
+      "oracle:local:home_hub",
+      "oracle:https://cap-oracle.example/tenant/acme"
+    ],
+    "kid": "capkey:revocation-key-id"
+  },
+
+  "aud": {
+    "receipt": "required",
+    "privacy": "selective"
+  },
+
+  "nonce": "b64:Qm9vay1mbGlnaHQtMTIz"
+}
+
+
+What this already supports:
+
+“Spend up to $50”
+
+“only these vendors”
+
+“only during this window”
+
+“delegation must attenuate by 50%”
+
+“only runnable by this agent enclave”
+
+“revocation semantics are explicit (lease)”
+
+Why this is spec-worthy (not app config)
+
+Every resource can evaluate the same fields deterministically.
+
+Attenuation is mechanically enforceable (no “interpretation disputes”).
+
+Receipts and revocation are first-class, not bolted on.
+
+2) Scope grammar — keep it finite, composable, and verifiable
+
+You want a grammar that is:
+
+expressive enough for common “authority shapes”
+
+not Turing-complete (avoid policy hell)
+
+identical across ecosystems
+
+Two-tier approach
+
+Tier A (v0.1): “Structured constraints” (like above)
+Tier B (v0.2+): Optional embedded policy bytecode / DSL, but only if it compiles to Tier A constraints for verification.
+
+For v0.1, the pol object should support only:
+
+allow/deny lists by vendor, resource tags, operation subtypes, merchant category codes, object labels, regex-free exact match (regex becomes a denial-of-service vector).
+
+3) Attenuation semantics — the rule that prevents authority fractals
+
+This must be dead-simple and non-negotiable:
+
+Monotone attenuation
+
+A delegated capability must be a subset of the parent in every dimension.
+
+Enforcement:
+
+The delegate must include an attn_parent pointer (hash of parent capability)
+
+Verifiers must check: delegate ⊆ parent AND delegate_attn_rules comply with parent’s attn.rules
+
+Depth is bounded (max_depth), and rate limits remain enforced at the resource.
+
+Minimum viable operator set
+
+For v0.1 attenuation rules:
+
+numeric: mul, min, max (with strict subset checks)
+
+time: min(delta) (shorten expiry)
+
+lists: subset_only (can only remove entries, never add)
+
+No arbitrary code. If it can’t be proven subset-by-construction, it’s out.
+
+4) Revocation — make it explicit, local-first, and cacheable
+
+Your earlier framing is right: “instant global revoke” is fantasy. So v0.1 should bake in:
+
+Revocation modes (normative)
+
+strict = must consult oracle within freshness bound (e.g., 30s)
+
+lease = valid only for lease_s since last oracle confirmation
+
+one_time = single use with nonce registry (local)
+
+proximity = requires local witness (UWB/NFC/witness hub)
+
+Revocation pointers (rev.ptr)
+
+A capability can include multiple oracles in priority order:
+
+local/home hub
+
+enterprise oracle
+
+public oracle (rare)
+
+Caching rule: verifiers can cache “not revoked” for at most lease_s (lease) or freshness bound (strict). That’s your bounded vulnerability window.
+
+5) Receipts — auditability without surveillance
+
+Every exercise of a capability produces a receipt object (signed by the executor and optionally countersigned by the proxy/resource). v0.1 receipt fields:
+
+cap_hash (what authority was used)
+
+rid, act, ts
+
+effect (spent $41.22, opened door once, read file X)
+
+oracle_state (revocation check result + timestamp)
+
+exec_attestation_ref (if enclave-bound)
+
+privacy_proofs placeholder (for v0.2 selective disclosure)
+
+The receipt is the foundation for:
+
+user forensics
+
+enterprise audit
+
+selective disclosure to regulators
+
+6) The “Agent Sandbox Wallet” — what it is, concretely
+
+You’re right: form factor decides adoption speed. Phase 0 should be:
+
+A Sidecar Wallet + Capability Proxy
+
+It is both:
+
+A user approval surface (wallet UI)
+
+A policy enforcement point (proxy that executes actions)
+
+Fastest shippable form
+
+Browser extension (approval UX + local signing)
+
+Local daemon (secure storage + enclave hooks where available)
+
+Cloud proxy (optional) for cross-device syncing and enterprise deployment
+
+Integration model with agent frameworks
+
+Agent never receives your real credentials.
+Instead:
+
+Agent requests an action: “book flight”
+
+Wallet generates a single-use / lease capability bound to the agent executor
+
+Agent submits the capability to the proxy
+
+Proxy performs the legacy action via:
+
+user’s existing sessions (browser automation)
+
+or stored merchant tokens in the proxy
+
+or enterprise connectors
+
+This means:
+
+Zero merchant switching cost
+
+No need for Stripe / banks / airlines to support CapNet yet
+
+The proxy is the enforcement boundary (the agent can’t exceed what the proxy allows)
+
+What the user experiences (the wedge moment)
+
+A clean prompt-like approval:
+
+“Allow this agent to spend up to $50 at delta.com in the next 30 minutes? Delegation allowed: yes, attenuate 50%.”
+Tap approve → it just works.
+
+This is the “first time an agent can safely spend money” story.
+
+7) “Who builds the first revocation oracle?” — answered for Phase 0
+
+In Phase 0, the proxy is the oracle.
+
+The proxy maintains a revocation set keyed by cap_hash / kid.
+
+The wallet can revoke locally instantly.
+
+Any action must pass through the proxy anyway, so revocation is effectively immediate for the wedge.
+
+Then Phase 1:
+
+Enterprise runs an oracle service (it’s just a small service with SLA + caching rules).
+Phase 2:
+
+Home hubs / routers ship with an oracle module for local devices.
+
+So the chicken-and-egg is avoided: the wedge doesn’t require external oracles because the enforcement point is already in the loop.
+
+8) Interoperability: prevent “12 incompatible CapNets”
+
+You nailed this: without conformance, standards become vibes.
+
+Required deliverables to avoid fragmentation
+
+Reference implementation
+
+verifier (subset checks, revocation semantics, receipt generation)
+
+signer (cap issuance)
+
+proxy enforcement module
+
+Conformance test suite
+
+canonicalization test vectors (CBOR determinism)
+
+signature chain tests
+
+attenuation subset proofs
+
+revocation mode behavior tests
+
+receipt format tests
+
+Capability “profiles”
+Like TLS profiles: a small set of recommended bundles:
+
+cap/agent-spend-lease
+
+cap/agent-read-once
+
+cap/enterprise-op-strict
+
+cap/iot-proximity
+
+Certification mark
+“CapNet Verified v0.1” must mean something testable.
+
+If you do only one thing: publish the test vectors and require “passes suite” for any “compatible” claim.
+
+9) 90-day execution plan for Wedge A (no boiling oceans)
+Days 1–14: Spec freeze v0.1
+
+finalize fields: rid, act, ctx, lim, pol, attn, exec, rev, aud
+
+publish canonical CBOR rules + 25 test vectors
+
+define 4 profiles (agent spend lease, agent read once, enterprise strict, iot proximity)
+
+Days 15–45: Reference build
+
+browser extension wallet (approve/deny, templates, policy presets)
+
+local proxy (enforces caps, executes actions via connector stubs)
+
+receipts + local audit view
+
+Days 46–70: One major framework integration demo
+
+pick one agent orchestration environment and wire “tool requests → cap request → proxy execution”
+
+prove:
+
+attenuation on sub-delegation
+
+revocation works instantly (because proxy is oracle)
+
+receipt trail exists
+
+Days 71–90: 3 pilots
+
+enterprise internal “agent workflows” (ticket ops, cloud ops, finance approvals)
+
+measure: reduced blast radius vs secrets, audit quality, revoke time
+
+Parallel: invite OpenAI, Anthropic, and Google to co-develop the spec once the reference + suite exists (labs adopt standards faster when there’s running code + tests).
+
+
+
+___________________________
+
+
+Agent Sandbox Protocol (ASP) — CapNet Phase 0
+1) Canonical Representation: CAP-L (Capability Language)
+
+We need something:
+
+deterministic canonicalization (signing must be stable),
+
+human-readable enough for audits,
+
+machine-friendly for parsing,
+
+easy to embed in web/mobile.
+
+Choice: Canonical JSON (JCS / RFC 8785-style canonicalization).
+Canonicalization is part of the spec (sort keys, normalize numbers/strings, etc.). That avoids “twelve incompatible signatures.”
+
+Capability Object (CapDoc v0.1)
+{
+  "v": "capdoc-0.1",
+  "cid": "cap:sha256:…", 
+  "iss": "did:key:z…",       
+  "sub": "did:key:z…",       
+  "aud": "capnet:proxy:merchant-bridge", 
+  "res": "urn:merchant:stripe:acct_1234",
+  "act": ["spend"],
+  "constraints": {
+    "amount": {"currency":"USD","max":5000},
+    "time": {"nbf": 1730000000, "exp": 1730003600},
+    "schedule": {"tz":"America/New_York","allow":[{"dow":["tue"],"start":"09:00","end":"17:00"}]},
+    "vendors": {"allow":["urn:merchant:delta","urn:merchant:united"]},
+    "geo": {"allow":["us"]},
+    "rate": {"max_calls":3,"per_seconds":3600},
+    "nonce": {"mode":"one-time"} 
+  },
+  "delegation": {
+    "mode": "attenuate-only",
+    "rules": [
+      {"field":"constraints.amount.max","op":"mul","value":0.5},
+      {"field":"constraints.time.exp","op":"min"},
+      {"field":"constraints.rate.max_calls","op":"min"}
+    ],
+    "max_depth": 2
+  },
+  "revoke": {
+    "mode": "lease",
+    "oracle": ["capnet://oracle/homehub/levi", "capnet://oracle/enterprise/intralan"],
+    "check": {"max_staleness_seconds": 300}
+  },
+  "bind": {
+    "executor": {
+      "did": "did:key:zAGENTPUB…",
+      "tee": {"required": true, "attestation": "tee-attest-v1"}
+    }
+  },
+  "proof": {
+    "type": "ed25519-chain",
+    "chain": [
+      {"sig":"…","by":"did:key:zROOT…"},
+      {"sig":"…","by":"did:key:zWALLET…"}
+    ]
+  },
+  "receipts": {
+    "required": true,
+    "endpoint": "capnet://wallet/receipts"
+  },
+  "meta": {
+    "label": "Flight booking sandbox",
+    "purpose": "Book BOS→SLC Tue",
+    "risk": "medium"
+  }
+}
+
+What each field means (normative)
+
+iss: issuer DID (wallet or policy engine)
+
+sub: holder DID (your wallet identity)
+
+aud: intended verifier / enforcement point (proxy, enterprise gate, device)
+
+res: resource identifier (merchant account, API namespace, device, dataset)
+
+act: verbs (spend/read/write/execute/open/publish)
+
+constraints: hard limits that enforcement points MUST enforce
+
+delegation: rules for derivation; MUST be monotone-reducing
+
+revoke: revocation profile + oracle pointers + staleness tolerance
+
+bind.executor: capability is only exercisable by a specific agent identity; optional TEE attestation requirement
+
+proof.chain: signature chain from root authority → wallet → derived caps
+
+receipts: mandatory audit events for each exercise
+
+This is the “cap-packet” you requested, with enough structure to implement.
+
+2) Scope Grammar: Action + Constraints is the Scope
+
+Instead of one opaque “scope string,” the scope is:
+
+res + act + constraints
+
+The grammar is simply:
+
+Boolean allow-lists (vendors/geo)
+
+Numeric bounds (amount max)
+
+Time windows (nbf/exp + schedule)
+
+Rate limits
+
+Nonce semantics (one-time)
+
+This covers your example:
+
+“up to $50, from these vendors, only Tuesdays, attenuate by 50% on delegation”
+
+That becomes:
+
+amount.max = 5000 cents
+
+vendors.allow = […]
+
+schedule.allow = Tue 09:00–17:00
+
+delegation.rules include amount.mul 0.5
+
+3) Attenuation Rules: Monotonicity (the non-negotiable safety invariant)
+Invariant
+
+A derived capability MUST NOT expand authority. Ever.
+
+Formally: for any derived cap C' from C, we require Perm(C') ⊆ Perm(C).
+
+Allowed operations (v0.1)
+
+min: choose the stricter value (earlier expiration, lower max_calls)
+
+mul <= 1.0: reduce numerical ceilings (amount, bandwidth, etc.)
+
+subset: reduce allow-lists (vendors, geo)
+
+tighten schedule: narrower time windows only
+
+decrease depth: enforce max_depth countdown
+
+Disallowed operations
+
+any op that can increase maxima (mul > 1)
+
+any op that can broaden allow-lists
+
+any op that can extend expiration beyond parent
+
+Delegation chain tracking
+
+Every derived cap includes:
+
+parent_cid
+
+depth_remaining
+
+attenuation_receipt (how it was reduced)
+
+This makes “dark delegation” tractable without doxxing: the chain is provable, but identities can remain pseudonymous unless selectively disclosed.
+
+4) Revocation Semantics (honest physics)
+
+Phase 0 must support three modes. Anything else is fantasy.
+
+A) mode: "one-time"
+
+Resource tracks nonce usage locally.
+
+No oracle required.
+
+Great for “open once,” “charge once,” “download once.”
+
+B) mode: "lease"
+
+Valid until exp, and optionally must check oracle if online.
+
+If resource is offline, lease bounds the blast radius.
+
+check.max_staleness_seconds expresses risk tolerance.
+
+C) mode: "strict"
+
+MUST check oracle within staleness window or deny.
+
+Only for high-risk rails.
+
+Key design principle: the capability itself declares revocation expectations so verifiers can enforce consistently.
+
+5) The “Agent Sandbox Wallet” — concrete form factor
+Phase 0 product: Sidecar Wallet + Capability Proxy
+
+Form factor:
+
+Browser extension (fastest distribution)
+
+Optional desktop sidecar daemon (for local agents)
+
+Cloud relay optional, but default local-first
+
+Components:
+
+Wallet UI (human consent + policy templates)
+
+role templates: “Shopping,” “Email triage,” “Travel booking”
+
+generates CapDoc, shows intent summary & risk
+
+Policy compiler
+
+turns user intent into constraints + delegation rules
+
+Enforcement proxy
+
+sits between agent and the outside world
+
+validates:
+
+signatures
+
+executor binding
+
+constraints
+
+revocation mode (oracle check if applicable)
+
+performs the legacy translation:
+
+Stripe / card rails
+
+Expedia / airline APIs
+
+Gmail / calendar APIs
+
+crucial: agent never sees raw credentials
+
+Receipt engine
+
+emits signed receipts per action
+
+Interaction flow (the demo you described)
+
+Agent asks: “Book flight BOS→SLC Tuesday, budget $500.”
+
+Proxy pauses and requests a cap from wallet:
+
+“Spend up to $500 on flights, Tue only, vendors: Delta/United, expires in 2 hours, one-time charge.”
+
+User approves.
+
+Proxy issues cap bound to that agent’s public key (and optionally its TEE attestation).
+
+Agent acts through proxy.
+
+Proxy enforces constraints, then hits legacy APIs.
+
+Receipt is generated and stored; optional selective disclosure.
+
+This is your “first time an AI can be trusted with a credit card” moment.
+
+6) First Revocation Oracle (the chicken-and-egg answer)
+
+Phase 0 doesn’t require a global oracle. It requires a local oracle embedded in the wallet/proxy, because the proxy is the verifier.
+
+Phase 0 oracle = Wallet Oracle
+
+Runs inside extension/sidecar
+
+Maintains a local revocation set for caps it issued
+
+“Revocation” is instant for anything routed through the proxy
+
+This breaks the bootstrapping loop:
+
+resources don’t need native support yet,
+
+merchants don’t need to change anything,
+
+revocation works because the enforcement point exists today: the proxy.
+
+Phase 1 (enterprise) adds enterprise oracle; Phase 2 (hardware) adds device/hub oracles.
+
+7) Interoperability & Conformance (avoid “12 incompatible CapNets”)
+
+You’re 100% right: without conformance, “open standard” is a meme.
+
+Phase 0 deliverables (non-negotiable)
+
+Reference implementation
+
+one in TypeScript (browser extension)
+
+one in Rust/Go (sidecar daemon)
+
+Test vectors
+
+canonicalization vectors (CapDoc → byte string)
+
+signature vectors
+
+attenuation derivation vectors
+
+revocation mode vectors
+
+receipt vectors
+
+Conformance suite
+
+“MUST reject” cases (expanded scope, stale oracle in strict mode, wrong executor)
+
+fuzz tests for parsers
+
+property tests: derived caps never expand authority
+
+Capability linting tool
+
+outputs human-readable intent summary
+
+flags dangerous patterns (“broad vendor allow-list,” “long lease,” “delegable with depth>1”)
+
+This is how you get labs and enterprises to trust “CapNet-compatible” claims.
+
+Phase 0–3 roadmap (tightened to your wedge framing)
+Phase 0 (0–90 days): Sidecar Wallet + Proxy
+
+Goal: safe spend + safe read without sharing credentials
+
+Deliver: CapDoc v0.1 + proxy + receipts + local oracle
+
+Integrate with one agent framework (LangChain / OpenAI Agents / Anthropic tool-use / OSS stack)
+
+Phase 1 (90–180): Enterprise Shadow IAM
+
+Replace service accounts/secrets for internal agent workflows
+
+Use enterprise devices as guardians (warm rail)
+
+Add enterprise oracle + policy engine + audit export
+
+Phase 2 (6–18 months): Hardware handshake
+
+Partner with a tier-2 OEM / IoT vendor
+
+Enforce executor-binding at silicon boundary for “unhackable” devices
+
+Phase 3: Capability Web
+
+Standards body + multi-vendor implementations
+
+OS-level Permission Lens
+
+What I’d build first (the minimal “wow” demo)
+
+Demo script:
+
+User grants “Flight booking sandbox” (one-time, $500, Tue-only, vendors allow-list, 2-hour exp).
+
+Agent books it.
+
+Agent tries to:
+
+upgrade seat with extra $200 → denied (amount max)
+
+book hotel too → denied (act/res mismatch)
+
+Agent delegates to a sub-agent → derived cap auto-halves amount and shortens exp.
+
+User hits revoke → proxy blocks instantly.
+
+Receipts show full chain and enforcement decisions.
+
+This is the “TCP/IP of agency” demo in 5 minutes.
