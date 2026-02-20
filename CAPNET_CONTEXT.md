@@ -37,6 +37,19 @@ CapNet is a new permission layer for the Agent Era. Today, to let software or AI
 
 **Key phrase:** *"Leash, not master keys."*
 
+### What CapNet is NOT
+
+This distinction is critical and must be made early in every conversation:
+
+- **Not a firewall.** A firewall monitors all traffic — yours, your agent's, everyone's. CapNet only governs the agent. The human can still do whatever they want. Buy alcohol, overspend, use any vendor. CapNet doesn't touch that.
+- **Not surveillance.** CapNet doesn't watch your browsing, scan your data, or filter your content. It's not DLP. It's not parental controls for adults.
+- **Not an access control list for humans.** CapNet doesn't restrict the user. The user *sets* the policy. The user *controls* revocation. The user retains full authority — they're choosing how much to *delegate* to the agent.
+- **Not a prompt-based restriction.** CapNet doesn't ask the AI "please don't buy alcohol." The agent can *try* anything it wants. The enforcement proxy is a separate service that blocks forbidden actions regardless of what the agent intends. A prompt is a suggestion. A capability is a physical boundary.
+
+**The analogy isn't a firewall. It's power of attorney with limits** — you authorize someone to act on your behalf, but only within specific bounds, and you can revoke it instantly.
+
+**Key phrase:** *"A fence for the agent, not a cage for the user."*
+
 ---
 
 ## 2) What makes CapNet "fundamental" (not just a product)
@@ -236,6 +249,60 @@ Signed event records for each attempted action (allowed/denied), including reaso
 
 ---
 
+## 10.5) How agents act today — transport methods & adapter architecture
+
+### The landscape (2025-2026)
+
+Agents take real-world actions through several transport methods. CapNet must eventually govern all of them:
+
+| Method | How It Works | % of Agent Actions | CapNet Approach |
+|--------|-------------|-------------------|-----------------|
+| **API / Tool Calling** | Agent calls functions via LangChain, OpenAI function calling, Anthropic tool use, CrewAI, AutoGen. The agent never sees a browser — it's pure API. | ~70-80% (dominant) | **Done.** SDK + proxy intercept. Agent calls proxy instead of API directly. |
+| **MCP (Model Context Protocol)** | Anthropic's emerging standard for agent-to-tool communication. Agents discover and use tools through MCP servers. | Growing fast | **Next target.** CapNet becomes an MCP gateway that wraps other MCP servers. Every tool call routes through policy. |
+| **Browser Automation** | Playwright, Puppeteer, Anthropic computer use, MultiOn, Browser Use. Agent literally controls a browser — clicks buttons, fills forms. | ~15-20% | Extension intercepts actions. Or proxy acts as HTTP forward proxy. |
+| **Desktop / OS Automation** | Screen-reading agents that use mouse/keyboard on any application. Still early but growing. | ~5% | OS-level hooks or driver-layer interception. Future work. |
+| **CLI / Terminal** | Agents that execute shell commands (Devin, Claude Code, etc.) | Niche | Shell wrapper that gates commands through policy. |
+
+### Why API-first is the right priority
+
+The industry is trending *away* from browser automation and *toward* structured API calls. When an agent "buys groceries" in production, it won't click through Instacart's website — it'll call Instacart's API. Browser automation is a bridge pattern that exists because APIs don't exist yet for everything agents need to do.
+
+### The transport-agnostic insight
+
+The enforcement pipeline (signature → executor → time → revocation → constraints) doesn't care how the action arrived. It evaluates a capability against a request. What changes between methods is only the **interception layer** — how you capture the agent's intent before it reaches the resource:
+
+```
+API call       →  SDK/middleware captures it     →  same enforcement pipeline
+MCP tool call  →  MCP gateway captures it        →  same enforcement pipeline
+Browser action →  Extension captures it           →  same enforcement pipeline
+CLI command    →  Shell wrapper captures it       →  same enforcement pipeline
+Desktop action →  OS-level hook captures it       →  same enforcement pipeline
+```
+
+The core stays the same. Each transport method gets an **adapter** — an on-ramp to the same enforcement engine. This is what makes CapNet infrastructure and not a product: the primitive is universal, the adapters are how it meets agents where they are.
+
+### The MCP inflection point
+
+MCP is the strategic inflection point. If CapNet becomes the policy layer that wraps MCP servers, then any agent using MCP automatically routes through CapNet policy — without the agent even knowing CapNet is there. That's the "install it and it just works" end state:
+
+```
+Phase 0 (now):    Proxy is a service you call explicitly
+                  Agent → CapNet Proxy → Resource API
+
+Phase 1 (next):   Proxy wraps real APIs (Stripe, GitHub, etc.)
+                  Agent → CapNet Proxy → Stripe API
+
+Phase 2:          Proxy becomes an MCP gateway
+                  Agent → MCP → CapNet Policy Layer → MCP Tool Servers
+                  (agent doesn't even know CapNet is there)
+
+Phase 3:          Proxy becomes ambient infrastructure
+                  Any agent framework auto-discovers CapNet policy
+                  Like how HTTPS is invisible but always there
+```
+
+---
+
 ## 11) Capability model (CapDoc v0.1 — minimal fields)
 
 Phase 0 needs a canonical signed object with:
@@ -275,15 +342,22 @@ The demo is successful if:
 **Use consistently:**
 - "The capability layer for agents"
 - "Leash, not master keys"
+- "A fence for the agent, not a cage for the user"
 - "Templates, not micromanagement"
 - "Enforcement boundary prevents damage even if agent is compromised"
 - "Scoped, revocable, auditable authority"
+- "Power of attorney with limits"
+- "The agent can try anything — the proxy decides what executes"
+- "Transport-agnostic enforcement — same pipeline, different adapters"
 
 **Avoid (Phase 0):**
 - "blockchain"
 - "decentralized utopia"
 - "replace the internet"
 - Positioning as "security tooling" (we're infrastructure, not a feature)
+- **"firewall"** — CapNet does not monitor all traffic; it only governs agent actions
+- **"surveillance" / "DLP" / "content filter"** — CapNet is not watching the user
+- **"parental controls"** — CapNet restricts the agent, never the human
 
 ---
 
@@ -412,3 +486,11 @@ After sandbox demo, prove CapNet gates something real:
 ### "What's the moat?"
 
 > "First-mover on the primitive + spec. If CapNet becomes how you express agent permissions, we're the TCP/IP of agency. The moat is the standard, not the implementation."
+
+### "Isn't this just a firewall?"
+
+> "No. A firewall monitors all traffic — yours, your agent's, everyone's. CapNet only governs the agent. The human can still do whatever they want. It's a fence for the agent, not a cage for the user. The user sets the policy, the user controls revocation, the user retains full authority. CapNet enforces the boundaries they choose to delegate."
+
+### "What about agents that use browsers or desktop apps, not just APIs?"
+
+> "Today ~80% of agent actions are API-based, and that's our priority. But the enforcement pipeline is transport-agnostic — it doesn't care whether the action came from an API call, a browser extension, an MCP tool, or a CLI command. The same policy engine evaluates the same capability. We add adapters for each transport method. The strategic inflection point is MCP (Model Context Protocol) — if CapNet wraps MCP servers, every agent using MCP gets policy enforcement automatically, without even knowing CapNet is there."

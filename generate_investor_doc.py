@@ -14,7 +14,8 @@ from docx.oxml import parse_xml
 import os
 from datetime import date
 
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "CapNet_Investor_Overview.docx")
+OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           os.environ.get("CAPNET_DOC_NAME", "CapNet_Overview.docx"))
 
 # -- Color palette --
 DARK_NAVY = RGBColor(0x1A, 0x1A, 0x2E)
@@ -244,7 +245,9 @@ def build_document():
         "CapNet is a new permission layer for the Agent Era. We replace master keys with "
         "bounded, revocable, auditable capabilities enforced at the boundary where actions occur. "
         "Users set simple templates; the system compiles them into enforceable permissions. "
-        "Even a compromised agent cannot exceed the leash.",
+        "Even a compromised agent cannot exceed the leash. "
+        "Critically: CapNet governs the agent, not the user. The human retains full authority \u2014 "
+        "they choose how much to delegate. It's a fence for the agent, not a cage for the user.",
     )
 
     doc.add_heading("The Opportunity", level=2)
@@ -396,6 +399,31 @@ def build_document():
         "Key principle: ",
     )
 
+    doc.add_heading("What CapNet is NOT", level=2)
+    add_body(
+        doc,
+        "This distinction is critical. CapNet is frequently compared to existing infrastructure, "
+        "but it solves a fundamentally different problem:",
+    )
+    add_bullet(doc, "A firewall monitors all traffic \u2014 yours, your agent's, everyone's. "
+               "CapNet only governs the agent. The human can still do whatever they want. "
+               "Buy alcohol, overspend, use any vendor. CapNet doesn't touch that.", "Not a firewall. ")
+    add_bullet(doc, "CapNet doesn't watch your browsing, scan your data, or filter your content. "
+               "It's not DLP, not parental controls, not content filtering.", "Not surveillance. ")
+    add_bullet(doc, "CapNet doesn't ask the AI \"please don't buy alcohol.\" The agent can try "
+               "anything it wants. The enforcement proxy is a separate service that blocks forbidden actions "
+               "regardless of what the agent intends. A prompt is a suggestion. A capability is a physical boundary.",
+               "Not a prompt-based restriction. ")
+    add_bullet(doc, "CapNet doesn't restrict the user. The user sets the policy. "
+               "The user controls revocation. The user retains full authority \u2014 they're choosing how much "
+               "of that authority to delegate to the agent.", "Not an access control list for humans. ")
+    add_callout(
+        doc,
+        "You authorize someone to act on your behalf, but only within specific bounds, and you can "
+        "revoke it instantly. CapNet is a fence for the agent, not a cage for the user.",
+        "The analogy isn't a firewall \u2014 it's power of attorney with limits. ",
+    )
+
     doc.add_heading("The Demo Story \u2014 5 Steps", level=2)
     add_body(doc, "CapNet's value becomes obvious in a 2-minute demonstration:")
 
@@ -504,6 +532,81 @@ def build_document():
     add_bullet(doc, "Capabilities bound to specific agents prevent stolen capabilities from being used by unauthorized actors.", "Executor binding: ")
     add_bullet(doc, "Even valid capabilities are constrained to specific budgets, vendors, categories, and time windows.", "Blast-radius containment: ")
     add_bullet(doc, "Instant revocation through the proxy \u2014 no propagation delay.", "Kill switch: ")
+
+    doc.add_heading("How Agents Act Today \u2014 Transport Methods", level=2)
+    add_body(
+        doc,
+        "Agents take real-world actions through several transport methods. CapNet's enforcement pipeline "
+        "is transport-agnostic \u2014 the same policy engine evaluates every request regardless of how it arrived. "
+        "What changes between methods is only the interception layer (adapter):",
+    )
+
+    transport_table = doc.add_table(rows=1, cols=4)
+    transport_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    transport_table.style = "Table Grid"
+    add_table_row(transport_table, ["Method", "How It Works", "Market Share", "CapNet Approach"], is_header=True)
+    transport_rows = [
+        (
+            "API / Tool Calling",
+            "Agent calls functions via LangChain, OpenAI, Anthropic tool use, CrewAI, AutoGen. Pure API, no browser.",
+            "~70-80%\n(dominant)",
+            "Done. SDK + proxy intercept. Agent calls proxy instead of API directly.",
+        ),
+        (
+            "MCP (Model Context Protocol)",
+            "Anthropic's emerging standard for agent-to-tool communication. Agents discover and use tools through MCP servers.",
+            "Growing fast",
+            "Next target. CapNet becomes an MCP gateway wrapping other MCP servers.",
+        ),
+        (
+            "Browser Automation",
+            "Playwright, Puppeteer, Anthropic computer use, MultiOn. Agent controls a real browser.",
+            "~15-20%",
+            "Extension intercepts actions. Or proxy acts as HTTP forward proxy.",
+        ),
+        (
+            "Desktop / OS",
+            "Screen-reading agents using mouse/keyboard on any application. Early but growing.",
+            "~5%",
+            "OS-level hooks or driver-layer interception. Future work.",
+        ),
+        (
+            "CLI / Terminal",
+            "Agents executing shell commands (Devin, Claude Code, etc.)",
+            "Niche",
+            "Shell wrapper that gates commands through policy.",
+        ),
+    ]
+    for i, row in enumerate(transport_rows):
+        add_table_row(transport_table, row, alt_row=(i % 2 == 1))
+
+    add_body(doc, "")
+
+    add_body(
+        doc,
+        "The industry is trending away from browser automation and toward structured API calls. "
+        "API-first is the right priority because that's where agents are going. Browser automation "
+        "is a bridge pattern \u2014 it exists because APIs don't yet cover everything agents need to do.",
+    )
+
+    doc.add_heading("Transport-Agnostic Architecture", level=2)
+    add_body(
+        doc,
+        "The enforcement pipeline (signature \u2192 executor \u2192 time \u2192 revocation \u2192 constraints) "
+        "doesn't care how the action arrived. The core stays the same; each transport method gets an adapter:",
+    )
+    add_bullet(doc, "SDK/middleware captures it \u2192 same enforcement pipeline", "API call \u2192 ")
+    add_bullet(doc, "MCP gateway captures it \u2192 same enforcement pipeline", "MCP tool call \u2192 ")
+    add_bullet(doc, "Extension captures it \u2192 same enforcement pipeline", "Browser action \u2192 ")
+    add_bullet(doc, "Shell wrapper captures it \u2192 same enforcement pipeline", "CLI command \u2192 ")
+
+    add_callout(
+        doc,
+        "If CapNet becomes the policy layer that wraps MCP servers, then any agent using MCP "
+        "automatically routes through CapNet policy \u2014 without the agent even knowing CapNet is there. "
+        "That's the 'install it and it just works' end state.",
+        "The MCP inflection point: ",
+    )
 
     doc.add_heading("Attenuation & Delegation (In Development)", level=2)
     add_body(
@@ -697,10 +800,10 @@ def build_document():
             "\u2022 CapNet gates something real\n\u2022 \"Not a toy\" proven\n\u2022 First 3-5 integrations live",
         ),
         (
-            "Phase 2\nEnterprise",
+            "Phase 2\nEnterprise +\nMCP Gateway",
             "6-18 months",
-            "\u2022 Enterprise proxy deployment (self-hosted)\n\u2022 SSO / identity provider integration\n\u2022 Policy engine with custom rules\n\u2022 Compliance dashboards + receipt export\n\u2022 Multi-tenant support",
-            "\u2022 3-5 enterprise pilots\n\u2022 First paid contracts\n\u2022 Reduced blast radius vs. secrets proven",
+            "\u2022 MCP gateway (wrap MCP servers with policy)\n\u2022 Enterprise proxy deployment (self-hosted)\n\u2022 SSO / identity provider integration\n\u2022 Policy engine with custom rules\n\u2022 Compliance dashboards + receipt export\n\u2022 Multi-tenant support",
+            "\u2022 Agents using MCP auto-route through policy\n\u2022 3-5 enterprise pilots\n\u2022 First paid contracts",
         ),
         (
             "Phase 3\nPlatform",
@@ -808,6 +911,23 @@ def build_document():
             "cross-cutting concern that works across all frameworks. Labs are incentivized to adopt a standard "
             "rather than build proprietary solutions \u2014 it reduces their liability and increases trust in "
             "their platforms. We're building for interoperability, which is harder to do from inside one ecosystem.",
+        ),
+        (
+            "\"Isn't this just a firewall?\"",
+            "No. A firewall monitors all traffic \u2014 yours, your agent's, everyone's. CapNet only governs "
+            "the agent. The human can still do whatever they want. Buy alcohol, overspend, use any vendor. "
+            "CapNet doesn't touch that. It's a fence for the agent, not a cage for the user. The user sets the "
+            "policy, controls revocation, and retains full authority. They're choosing how much to delegate, "
+            "and CapNet enforces those boundaries.",
+        ),
+        (
+            "\"What about agents that use browsers or desktop apps, not just APIs?\"",
+            "Today ~80% of agent actions are API-based, and that's our priority. But the enforcement pipeline "
+            "is transport-agnostic \u2014 it doesn't care whether the action came from an API call, a browser "
+            "extension, an MCP tool, or a CLI command. The same policy engine evaluates the same capability. "
+            "We add adapters for each transport method. The strategic inflection point is MCP (Model Context "
+            "Protocol) \u2014 if CapNet wraps MCP servers, every agent using MCP gets policy enforcement "
+            "automatically, without even knowing CapNet is there.",
         ),
     ]
 

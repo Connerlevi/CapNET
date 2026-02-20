@@ -10,6 +10,9 @@ Capability-based authorization layer for AI agents. Leash, not master keys.
 
 ## What CapNet is NOT
 
+- **Not a firewall.** A firewall monitors all traffic. CapNet only governs the agent. The human can still do whatever they want — it's a fence for the agent, not a cage for the user.
+- **Not surveillance or DLP.** We don't watch your browsing, scan your data, or filter your content.
+- **Not a prompt-based restriction.** We don't ask the AI "please don't buy alcohol." The agent can try anything — the enforcement proxy blocks what the capability doesn't allow.
 - **Not a payments company.** Spending is the demo wedge, not the product.
 - **Not an LLM wrapper.** We're infrastructure that works with any agent framework.
 - **Not another IAM UI.** We're the authorization primitive that IAM systems will call.
