@@ -1,6 +1,6 @@
 # CapNet Project Structure
 
-> Updated: 2026-02-18 | Status: Phase 0 Complete
+> Updated: 2026-02-20 | Status: Phase 0 Complete
 
 ```
 CapNET/
@@ -81,8 +81,10 @@ CapNET/
 ├── TESTER_GUIDE.md              # Complete external tester guide
 ├── TESTING_QUICKSTART.md        # 5-minute tester onboarding
 ├── TEST_RUNBOOK.md              # Comprehensive 15-scenario test suite
-├── CapNet_Overview.docx # Investor & collaborator overview document
-└── generate_investor_doc.py     # Script to regenerate investor .docx
+├── CapNet_Overview_v2.docx          # Investor & collaborator overview document
+├── CapNet_Architecture_Diagrams.pdf # 7-page color architecture diagrams
+├── generate_investor_doc.py         # Script to regenerate investor .docx
+└── generate_architecture_diagrams.py # Script to regenerate architecture diagrams PDF
 ```
 
 ---

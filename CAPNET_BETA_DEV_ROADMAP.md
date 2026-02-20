@@ -49,13 +49,14 @@ Why this architecture:
 
 ## 3) Phase 0 Product Requirements
 
-### A) Wallet / Extension UI
-- [ ] Templates list (Groceries template)
-- [ ] Template detail: budget, allowed vendors, blocked categories
-- [ ] Generate capability → POST to proxy
-- [ ] Active capabilities list with status
-- [ ] Revoke button → POST /capability/revoke
-- [ ] Receipts timeline view
+### A) Wallet / Extension UI (✅ COMPLETE)
+- [x] Templates list (Groceries template)
+- [x] Template detail: budget, allowed vendors, blocked categories
+- [x] Generate capability → POST to proxy
+- [x] Active capabilities list with status
+- [x] Revoke button → POST /capability/revoke
+- [x] Receipts timeline view
+- [x] Agent identity management (Ed25519 keypair, persisted to chrome.storage)
 
 ### B) Proxy / Enforcement Boundary (✅ COMPLETE)
 - [x] Capability issuance (POST /capability/issue)
@@ -71,11 +72,14 @@ Why this architecture:
 - [x] POST /checkout — creates order after proxy approval
 - [x] GET /orders — list/retrieve orders
 
-### D) SDK (partial)
+### D) SDK (✅ COMPLETE)
 - [x] Health check
-- [ ] Issue capability
-- [ ] Submit action request
-- [ ] Revoke capability
+- [x] Issue capability
+- [x] Submit action request
+- [x] Revoke capability
+- [x] List capabilities
+- [x] List receipts
+- [x] Full lifecycle demo script (`sdk/src/demo.ts`)
 
 ---
 
@@ -105,18 +109,20 @@ Why this architecture:
 - Post-revoke attempts denied
 - CAP_REVOKED receipt event
 
-### Week 5 — Extension UI (IN PROGRESS)
-- Templates screen
-- Capability issuance UI
-- Active capabilities list
-- Revoke button wiring
-- Receipts timeline
+### Week 5 — Extension UI ✅ COMPLETE
+- Templates screen with template config + issuance
+- Agent identity panel (Ed25519 keypair generation/persistence)
+- Active capabilities list with revoke button
+- Receipts timeline grouped by date
+- Response schema validation (Zod) on all API calls
 
-### Week 6 — Polish + Demo Harness
-- "Investor Mode" scripted flow
-- Human-readable denial reasons
-- One command to run all components
-- Conformance tests
+### Week 6 — Polish + Demo Harness (PARTIAL)
+- [x] Human-readable denial reasons
+- [x] One command to run all components (`npm run dev`)
+- [x] Demo script with full lifecycle (`npm run demo:clean`)
+- [x] Post-demo and post-startup next-step guidance
+- [ ] "Investor Mode" scripted flow
+- [ ] Conformance tests
 
 ---
 
@@ -203,18 +209,27 @@ The demo is successful when:
    - Issue time-bound, scope-bound capabilities
    - Step-up approval for high-risk actions
    - Full audit trail
+   - **Phase 1 integration target: OpenClaw** — 140K GitHub stars, documented security issues (Cisco found data exfiltration in skills), maintainer warning "too dangerous for beginners." Perfect proof that CapNet solves a real, documented problem. Three integration approaches: CapNet skill, proxy middleware, or MCP gateway.
 
-2. **Agent-to-SaaS Policy Layer** (Phase 2)
+2. **Transport-Agnostic Enforcement** (Phase 1-2)
+   - Agents act via multiple transports: API/tool calling (~80%), MCP (growing fast), browser automation (~15%), desktop/OS (~5%), CLI (niche)
+   - Same enforcement pipeline regardless of transport — adapters per method
+   - **MCP as strategic inflection point**: CapNet as MCP gateway wrapping MCP servers. Agent connects to CapNet thinking it's the MCP server; CapNet enforces policy, then forwards to the real server. "Install and forget" enforcement.
+
+3. **Agent-to-SaaS Policy Layer** (Phase 2)
    - Normalize permissions across common SaaS
    - Enforce least privilege across tools
+   - MCP gateway for tool-calling agents
 
-3. **Cross-org Delegated Trust** (Phase 3)
+4. **Cross-org Delegated Trust** (Phase 3)
    - One org grants another org's agents scoped capabilities
    - No raw credential sharing
 
-4. **Universal Capability Fabric** (North Star)
+5. **Universal Capability Fabric** (North Star)
    - The default way networks express trust and collaboration
    - "TCP/IP of agency"
+
+**Important distinction:** CapNet is NOT a firewall. It doesn't monitor all traffic or restrict the human user. It's a fence for the agent — scoped authority for the machine actor, invisible to the human. "Power of attorney with limits."
 
 ---
 

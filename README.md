@@ -139,9 +139,10 @@ npm run typecheck:all # Typecheck all + build extension
 | `TEST_RUNBOOK.md` | QA / Developers | Detailed test procedures |
 | `CAPNET_CONTEXT.md` | Everyone | Vision, thesis, design principles |
 | `WORKING_NOTES.md` | Developers | Session log, implementation status |
-| `CapNet_Overview.docx` | Investors / Collaborators | 15-page overview with revenue model & GTM |
+| `CapNet_Overview_v2.docx` | Investors / Collaborators | 15-page overview with revenue model & GTM |
+| `CapNet_Architecture_Diagrams.pdf` | Everyone | 7-page color architecture & flow diagrams |
 | `docs/spec_v0.1.md` | Developers | Technical specification |
 
 ## Status
 
-**Phase 0 Complete** — Ready for testing. All core scenarios verified (2026-02-18).
+**Phase 0 Complete** — Ready for testing. All core scenarios verified (2026-02-20).

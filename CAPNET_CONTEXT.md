@@ -433,12 +433,18 @@ After sandbox demo, prove CapNet gates something real:
 
 | Option | Complexity | Investor Impact |
 |--------|------------|-----------------|
+| **OpenClaw integration** | Medium | "140K-star agent, governed by CapNet" |
 | **Stripe test-mode** | Medium | "Real money rails, scoped" |
 | **GitHub API** | Low | "Agent can't delete repos" |
 | **Google Workspace** | Medium | "Agent can read calendar, not delete" |
 | **Slack** | Low | "Agent posts to #general, not #executive" |
 
-**Recommendation:** Stripe test-mode is highest impact for "agent spending" narrative continuity. GitHub is lowest friction to implement.
+**Recommendation:** OpenClaw is the highest-impact target. It's the most popular open-source agent (140K GitHub stars), has documented security issues (Cisco found malicious skills doing data exfiltration), and its own maintainer warns it's "too dangerous" for non-technical users. CapNet solves exactly this. A CapNet skill for OpenClaw would demonstrate the value instantly: same agent, now safe.
+
+**OpenClaw integration approaches:**
+1. **CapNet skill** — Build an OpenClaw skill that routes actions through the proxy (cleanest)
+2. **Proxy as middleware** — Point OpenClaw's service endpoints at CapNet proxy
+3. **MCP gateway** — If OpenClaw adopts MCP, CapNet wraps the MCP servers transparently
 
 ---
 

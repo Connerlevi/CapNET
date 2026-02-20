@@ -4,9 +4,9 @@
 
 ---
 
-## Last Updated: 2026-02-18
+## Last Updated: 2026-02-20
 
-## Current Status: READY FOR TESTING — All blockers resolved, docs verified against live output
+## Current Status: READY FOR TESTING — Extension popup fix pushed, OpenClaw identified as Phase 1 target
 
 ---
 
@@ -164,7 +164,19 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 
 ---
 
-## What's Next: Prompt 7 (remaining) — Attenuation/Delegation
+## What's Next
+
+### Priority 1: OpenClaw Integration (Phase 1 target)
+- Build CapNet skill for OpenClaw that routes agent actions through proxy
+- 140K GitHub stars, documented security issues — perfect demo of CapNet value
+- Three approaches: CapNet skill, proxy middleware, or MCP gateway
+
+### Priority 2: Extension popup bug
+- Popup displays as thin black bar on macOS Chrome
+- CSS fix pushed (html+body dimensions) but needs Mac testing
+- If still broken: right-click popup → Inspect → check console for errors
+
+### Priority 3: Prompt 7 (remaining) — Attenuation/Delegation
 
 ### Already Done
 - Executor binding (agent pubkey in cap, verified at enforcement)
@@ -298,6 +310,19 @@ Only after Tier 1 passes 100%:
   - FAQ and troubleshooting
   - Issue reporting template
 - **Project ready for tester handoff**
+
+### 2026-02-20 — Architecture diagrams, messaging overhaul, extension fix, OpenClaw research
+- **Architecture diagrams**: Generated 7-page color PDF (`CapNet_Architecture_Diagrams.pdf`) covering system architecture, issuance flow, enforcement decision tree, action flow, revocation flow, hijacker blast radius, and comparison matrix
+- **Core messaging overhaul** — Two critical additions baked into all docs:
+  - **Firewall distinction**: "CapNet is NOT a firewall. A fence for the agent, not a cage for the user." Added to CAPNET_CONTEXT.md, README.md, investor doc, and messaging guardrails
+  - **Agent transport methods & adapter architecture**: How agents act today (API ~80%, MCP growing, browser ~15%, desktop ~5%, CLI niche). Transport-agnostic enforcement pipeline with adapter model. MCP as strategic inflection point (Phase 2)
+- **Post-demo next steps**: Demo script now prints Chrome extension loading instructions and next steps after completion
+- **Chrome extension instructions**: Expanded in TESTER_GUIDE.md and TESTING_QUICKSTART.md with full paths, platform examples, troubleshooting
+- **Proxy startup message**: Added "CapNet services ready! Next steps:" to proxy listen output
+- **Extension popup fix**: Fixed sizing on macOS — added explicit html+body dimensions, changed overflow from hidden to auto
+- **OpenClaw research**: Identified as top Phase 1 integration target (140K GitHub stars, documented security issues from Cisco, perfect CapNet use case)
+- **Investor doc regenerated** as `CapNet_Overview_v2.docx` with firewall distinction, transport methods, adapter architecture, MCP roadmap, and new FAQ entries
+- **5 commits pushed to GitHub** (Connerlevi/CapNET)
 
 ### 2026-02-18 — Doc audit, bug fixes, investor doc, initial commit
 - **Reinstalled node_modules from WSL** (fixed esbuild platform mismatch from Windows install)
