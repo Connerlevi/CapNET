@@ -72,14 +72,21 @@ npm run build
 
 ### Step 3: Load the Chrome Extension
 
-1. Open Chrome
-2. Go to `chrome://extensions`
-3. Enable **Developer mode** (toggle in top right)
-4. Click **Load unpacked**
-5. Select the folder: `extension/dist`
-6. Pin the CapNet extension to your toolbar (puzzle icon → pin)
+Works in Chrome, Edge, Brave, or any Chromium browser.
 
-**Expected:** Extension icon appears in toolbar
+1. Open **Chrome**
+2. Type `chrome://extensions` in the address bar and press Enter
+3. Enable **Developer mode** — toggle switch in the **top-right corner**
+4. Click **"Load unpacked"** (top-left area)
+5. Navigate to the `extension/dist/` folder inside your CapNET project:
+   - **Windows:** `C:\Users\YourName\CapNET\extension\dist`
+   - **Mac:** `/Users/YourName/CapNET/extension/dist`
+6. Click **"Select Folder"** (Windows/Linux) or **"Open"** (Mac)
+7. **Pin to toolbar:** Puzzle icon (🧩) in top-right of Chrome → find CapNet → click pin
+
+**Expected:** CapNet icon appears in toolbar. Click it to open the wallet.
+
+**Won't load?** Run `npm run build` first — the `extension/dist/` folder is created by the build.
 
 ---
 
@@ -219,9 +226,29 @@ Demo Summary
 
 The leash works. Agents can act, but only within bounds.
 ============================================================
+
+  What to do next:
+
+  1. Load the Chrome extension (if you haven't already):
+     a. Open Chrome and go to chrome://extensions
+     b. Enable 'Developer mode' (toggle in top-right corner)
+     c. Click 'Load unpacked'
+     d. Select the extension/dist/ folder inside this project
+     e. Pin CapNet to your toolbar (puzzle icon -> pin)
+
+  2. Try the extension UI:
+     - Templates tab: Issue a capability (set budget, blocked categories)
+     - Active tab:    See active caps, click Revoke to test kill switch
+     - Receipts tab:  View the full audit trail from this demo
+
+  3. Run edge-case tests:  See TEST_RUNBOOK.md
+  4. Full tester guide:    See TESTER_GUIDE.md
+
+  NOTE: 'npm run dev' must be running for the extension to work.
+============================================================
 ```
 
-**All 9 steps should complete.** The three key decisions must be correct: ALLOW, DENY (alcohol), DENY (revoked).
+**All 9 steps should complete.** The three key decisions must be correct: ALLOW, DENY (alcohol), DENY (revoked). The post-demo output tells you exactly what to do next.
 
 ### Test D: View Receipts (Audit Trail)
 

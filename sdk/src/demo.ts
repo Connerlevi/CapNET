@@ -374,6 +374,28 @@ async function main() {
   console.log("  ✗ Post-revoke denied (capability revoked)");
   console.log("\nThe leash works. Agents can act, but only within bounds.");
   console.log("=".repeat(60));
+
+  // Next steps for tester
+  console.log("");
+  console.log("  What to do next:");
+  console.log("");
+  console.log("  1. Load the Chrome extension (if you haven't already):");
+  console.log("     a. Open Chrome and go to chrome://extensions");
+  console.log("     b. Enable 'Developer mode' (toggle in top-right corner)");
+  console.log("     c. Click 'Load unpacked'");
+  console.log("     d. Select the extension/dist/ folder inside this project");
+  console.log("     e. Pin CapNet to your toolbar (puzzle icon -> pin)");
+  console.log("");
+  console.log("  2. Try the extension UI:");
+  console.log("     - Templates tab: Issue a capability (set budget, blocked categories)");
+  console.log("     - Active tab:    See active caps, click Revoke to test kill switch");
+  console.log("     - Receipts tab:  View the full audit trail from this demo");
+  console.log("");
+  console.log("  3. Run edge-case tests:  See TEST_RUNBOOK.md");
+  console.log("  4. Full tester guide:    See TESTER_GUIDE.md");
+  console.log("");
+  console.log("  NOTE: 'npm run dev' must be running for the extension to work.");
+  console.log("=".repeat(60));
 }
 
 main().catch((err) => {

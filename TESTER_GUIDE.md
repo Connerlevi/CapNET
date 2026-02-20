@@ -113,15 +113,25 @@ npm run build
 
 ### Step 4: Load the Chrome Extension
 
-1. Open Chrome
-2. Go to `chrome://extensions`
-3. Enable **Developer mode** (toggle in top right)
-4. Click **Load unpacked**
-5. Navigate to the `extension/dist` folder inside the project
-6. Click **Select Folder**
-7. Pin the CapNet extension to your toolbar (puzzle icon → pin)
+This works in Chrome, Edge, Brave, or any Chromium-based browser.
 
-**Expected:** CapNet icon appears in your toolbar
+1. Open **Chrome**
+2. Type `chrome://extensions` in the address bar and press Enter
+3. Enable **Developer mode** — toggle switch in the **top-right corner** of the page
+4. Click the **"Load unpacked"** button that appears (top-left area)
+5. In the folder picker, navigate to your CapNET project folder, then into `extension/dist/`
+   ```
+   Windows:  C:\Users\YourName\CapNET\extension\dist
+   Mac:      /Users/YourName/CapNET/extension/dist
+   Linux:    /home/YourName/CapNET/extension/dist
+   ```
+6. Click **"Select Folder"** (Windows/Linux) or **"Open"** (Mac)
+7. You should see "CapNet Wallet" appear in your extensions list
+8. **Pin it to your toolbar:** Click the puzzle piece icon (🧩) in the top-right of Chrome → find CapNet Wallet → click the pin icon
+
+**Expected:** CapNet icon appears in your toolbar. Click it to open the wallet UI.
+
+**If the extension won't load:** Make sure you ran `npm run build` first — the `extension/dist/` folder is created by the build step.
 
 ### Step 5: Start the Services
 
@@ -219,6 +229,26 @@ Demo Summary
   ✗ Post-revoke denied (capability revoked)
 
 The leash works. Agents can act, but only within bounds.
+============================================================
+
+  What to do next:
+
+  1. Load the Chrome extension (if you haven't already):
+     a. Open Chrome and go to chrome://extensions
+     b. Enable 'Developer mode' (toggle in top-right corner)
+     c. Click 'Load unpacked'
+     d. Select the extension/dist/ folder inside this project
+     e. Pin CapNet to your toolbar (puzzle icon -> pin)
+
+  2. Try the extension UI:
+     - Templates tab: Issue a capability (set budget, blocked categories)
+     - Active tab:    See active caps, click Revoke to test kill switch
+     - Receipts tab:  View the full audit trail from this demo
+
+  3. Run edge-case tests:  See TEST_RUNBOOK.md
+  4. Full tester guide:    See TESTER_GUIDE.md
+
+  NOTE: 'npm run dev' must be running for the extension to work.
 ============================================================
 ```
 
