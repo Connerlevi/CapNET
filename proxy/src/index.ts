@@ -483,4 +483,11 @@ app.get("/capabilities", (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`[proxy] listening on http://localhost:${PORT}`);
+  console.log("");
+  console.log("  CapNet services ready!");
+  console.log("");
+  console.log("  Next steps:");
+  console.log("    Run the demo (new terminal):  npm run demo:clean");
+  console.log("    Load Chrome extension:        chrome://extensions -> Load unpacked -> extension/dist/");
+  console.log("");
 });
