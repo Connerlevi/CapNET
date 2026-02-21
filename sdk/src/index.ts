@@ -10,6 +10,7 @@ import type {
   CapDoc,
   ActionRequest,
   ActionResult,
+  ToolCallRequest,
   Receipt,
 } from "@capnet/shared";
 
@@ -37,6 +38,17 @@ export interface IssueCapabilityRequest {
     max_amount_cents: number;
     allowed_vendors: string[];
     blocked_categories: string[];
+  };
+}
+
+export interface IssueToolCallCapabilityRequest {
+  template: string;
+  agent_id: string;
+  agent_pubkey: string;
+  constraints: {
+    allowed_tools: string[];
+    blocked_tool_categories: string[];
+    max_calls?: number;
   };
 }
 
@@ -124,9 +136,17 @@ export class CapNetClient {
   // Capabilities
   // ---------------------------------------------------------------------------
 
-  /** Issue a new capability */
+  /** Issue a new spend capability */
   async issueCapability(req: IssueCapabilityRequest): Promise<CapDoc> {
     return this.request<CapDoc>("/capability/issue", {
+      method: "POST",
+      json: req,
+    });
+  }
+
+  /** Issue a new tool_call capability */
+  async issueToolCallCapability(req: IssueToolCallCapabilityRequest): Promise<CapDoc> {
+    return this.request<CapDoc>("/capability/issue/toolcall", {
       method: "POST",
       json: req,
     });
@@ -149,11 +169,19 @@ export class CapNetClient {
   // Actions
   // ---------------------------------------------------------------------------
 
-  /** Submit an action request for enforcement */
+  /** Submit a spend action request for enforcement */
   async submitAction(actionRequest: ActionRequest): Promise<ActionResult> {
     return this.request<ActionResult>("/action/request", {
       method: "POST",
       json: actionRequest,
+    });
+  }
+
+  /** Submit a tool call request for enforcement */
+  async submitToolCall(toolCallRequest: ToolCallRequest): Promise<ActionResult> {
+    return this.request<ActionResult>("/action/toolcall", {
+      method: "POST",
+      json: toolCallRequest,
     });
   }
 
@@ -174,4 +202,4 @@ export class CapNetClient {
 }
 
 // Re-export types for convenience
-export type { CapDoc, ActionRequest, ActionResult, Receipt } from "@capnet/shared";
+export type { CapDoc, ActionRequest, ActionResult, ToolCallRequest, Receipt } from "@capnet/shared";

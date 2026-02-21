@@ -5,6 +5,18 @@ interface CapWithStatus extends CapDoc {
   is_revoked: boolean;
 }
 
+// Type narrowing for constraint union
+interface SpendConstraints {
+  currency: "USD";
+  max_amount_cents: number;
+  allowed_vendors: string[];
+  blocked_categories: string[];
+}
+
+function isSpendConstraints(c: unknown): c is SpendConstraints {
+  return typeof c === "object" && c !== null && "allowed_vendors" in c;
+}
+
 interface ActiveCapsProps {
   refreshTrigger: number;
 }
@@ -158,22 +170,41 @@ export function ActiveCaps({ refreshTrigger }: ActiveCapsProps) {
                 <span className="cap-status cap-status--active">Active</span>
               </div>
               <div className="cap-details">
-                <div className="cap-row">
-                  <span className="cap-label">Budget:</span>
-                  <span className="cap-value">{formatBudget(cap.constraints.max_amount_cents)}</span>
-                </div>
-                <div className="cap-row">
-                  <span className="cap-label">Vendors:</span>
-                  <span className="cap-value">{cap.constraints.allowed_vendors.join(", ")}</span>
-                </div>
-                <div className="cap-row">
-                  <span className="cap-label">Blocked:</span>
-                  <span className="cap-value">
-                    {cap.constraints.blocked_categories.length > 0
-                      ? cap.constraints.blocked_categories.join(", ")
-                      : "none"}
-                  </span>
-                </div>
+                {isSpendConstraints(cap.constraints) ? (
+                  <>
+                    <div className="cap-row">
+                      <span className="cap-label">Budget:</span>
+                      <span className="cap-value">{formatBudget(cap.constraints.max_amount_cents)}</span>
+                    </div>
+                    <div className="cap-row">
+                      <span className="cap-label">Vendors:</span>
+                      <span className="cap-value">{cap.constraints.allowed_vendors.join(", ")}</span>
+                    </div>
+                    <div className="cap-row">
+                      <span className="cap-label">Blocked:</span>
+                      <span className="cap-value">
+                        {cap.constraints.blocked_categories.length > 0
+                          ? cap.constraints.blocked_categories.join(", ")
+                          : "none"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="cap-row">
+                      <span className="cap-label">Type:</span>
+                      <span className="cap-value">Tool Call</span>
+                    </div>
+                    <div className="cap-row">
+                      <span className="cap-label">Tools:</span>
+                      <span className="cap-value">
+                        {"allowed_tools" in cap.constraints
+                          ? (cap.constraints as { allowed_tools: string[] }).allowed_tools.join(", ")
+                          : "n/a"}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="cap-row">
                   <span className="cap-label">Expires:</span>
                   <span className="cap-value">
@@ -207,8 +238,14 @@ export function ActiveCaps({ refreshTrigger }: ActiveCapsProps) {
                 </div>
                 <div className="cap-details">
                   <div className="cap-row">
-                    <span className="cap-label">Budget:</span>
-                    <span className="cap-value">{formatBudget(cap.constraints.max_amount_cents)}</span>
+                    <span className="cap-label">
+                      {isSpendConstraints(cap.constraints) ? "Budget:" : "Type:"}
+                    </span>
+                    <span className="cap-value">
+                      {isSpendConstraints(cap.constraints)
+                        ? formatBudget(cap.constraints.max_amount_cents)
+                        : "Tool Call"}
+                    </span>
                   </div>
                   <div className="cap-row">
                     <span className="cap-label">Issued:</span>

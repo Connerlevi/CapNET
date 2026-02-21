@@ -61,12 +61,17 @@ export const ExecutorSchema = z
 
 export const ResourceSchema = z
   .object({
-    type: z.enum(["spend", "sandbox_merchant", "generic"]),
+    type: z.enum(["spend", "sandbox_merchant", "tool_call", "generic"]),
     vendor: z.string().min(2).max(128),
   })
   .strict();
 
-export const ConstraintsSchema = z
+// -----------------------------------------------------------------------------
+// Constraints — polymorphic by action type
+// -----------------------------------------------------------------------------
+
+/** Spend constraints (budget, vendors, blocked categories) */
+export const SpendConstraintsSchema = z
   .object({
     currency: z.literal("USD"),
     max_amount_cents: z.number().int().positive(),
@@ -74,6 +79,22 @@ export const ConstraintsSchema = z
     blocked_categories: z.array(z.string().max(64)),
   })
   .strict();
+
+export type SpendConstraints = z.infer<typeof SpendConstraintsSchema>;
+
+/** Tool call constraints (allowed tools, blocked tool categories) */
+export const ToolCallConstraintsSchema = z
+  .object({
+    allowed_tools: z.array(z.string().min(1).max(128)).min(1),
+    blocked_tool_categories: z.array(z.string().max(64)),
+    max_calls: z.number().int().positive().optional(),
+  })
+  .strict();
+
+export type ToolCallConstraints = z.infer<typeof ToolCallConstraintsSchema>;
+
+/** Union — validated by action type in CapDoc superRefine */
+export const ConstraintsSchema = z.union([SpendConstraintsSchema, ToolCallConstraintsSchema]);
 
 export const RevocationSchema = z
   .object({
@@ -104,7 +125,7 @@ export const CapDocSchema = z
     subject: SubjectSchema,
     executor: ExecutorSchema,
     resource: ResourceSchema,
-    actions: z.array(z.enum(["spend"])).min(1).max(10),
+    actions: z.array(z.enum(["spend", "tool_call"])).min(1).max(10),
     constraints: ConstraintsSchema,
     revocation: RevocationSchema,
     proof: ProofSchema,
@@ -135,12 +156,35 @@ export const CapDocSchema = z
       }
     }
 
-    // allowed_vendors must include resource.vendor
-    if (!cap.constraints.allowed_vendors.includes(cap.resource.vendor)) {
+    // Action-type-specific constraint validation
+    const isSpend = cap.actions.includes("spend");
+    const isToolCall = cap.actions.includes("tool_call");
+
+    if (isSpend && "allowed_vendors" in cap.constraints) {
+      // allowed_vendors must include resource.vendor
+      const c = cap.constraints as SpendConstraints;
+      if (!c.allowed_vendors.includes(cap.resource.vendor)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["constraints", "allowed_vendors"],
+          message: "allowed_vendors must include resource.vendor",
+        });
+      }
+    }
+
+    if (isToolCall && !("allowed_tools" in cap.constraints)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["constraints", "allowed_vendors"],
-        message: "allowed_vendors must include resource.vendor",
+        path: ["constraints"],
+        message: "tool_call actions require allowed_tools in constraints",
+      });
+    }
+
+    if (isSpend && !("allowed_vendors" in cap.constraints)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["constraints"],
+        message: "spend actions require allowed_vendors in constraints",
       });
     }
   });

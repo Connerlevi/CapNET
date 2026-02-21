@@ -50,7 +50,11 @@ export const DenyReasonSchema = z.union([
   z.literal("EXECUTOR_MISMATCH"),
   z.literal("VENDOR_NOT_ALLOWED"),
   z.literal("AMOUNT_EXCEEDS_MAX"),
+  z.literal("TOOL_NOT_ALLOWED"),
+  z.literal("ACTION_NOT_ALLOWED"),
+  z.literal("PROXY_UNREACHABLE"),
   z.string().regex(/^CATEGORY_BLOCKED:[a-z0-9_-]+$/i, "CATEGORY_BLOCKED:<category>"),
+  z.string().regex(/^TOOL_CATEGORY_BLOCKED:[a-z0-9_-]+$/i, "TOOL_CATEGORY_BLOCKED:<category>"),
 ]);
 
 export const ReasonSchema = z.union([z.literal("ALLOWED"), DenyReasonSchema]);
@@ -117,6 +121,39 @@ export const ActionRequestSchema = z
   });
 
 export type ActionRequest = z.infer<typeof ActionRequestSchema>;
+
+// -----------------------------------------------------------------------------
+// Tool call request (for agent tool invocations)
+// -----------------------------------------------------------------------------
+
+/** Tool call categories for classification */
+export const ToolCategorySchema = z.enum([
+  "shell",       // exec, bash, terminal
+  "web",         // web_fetch, web_search, HTTP requests
+  "browser",     // Playwright, CDP, browser automation
+  "messaging",   // WhatsApp, Telegram, Slack, Discord, email
+  "filesystem",  // file read/write/delete
+  "spawn",       // sub-agent spawning, session management
+  "device",      // camera, location, contacts, screen
+  "other",       // uncategorized tools
+]);
+
+export type ToolCategory = z.infer<typeof ToolCategorySchema>;
+
+export const ToolCallRequestSchema = z
+  .object({
+    request_id: z.string().min(8).max(128),
+    ts: z.string().datetime(),
+    agent_id: z.string().min(3).max(128),
+    agent_pubkey: Ed25519PubkeySchema,
+    action: z.literal("tool_call"),
+    tool_name: NormalizedString,
+    tool_category: ToolCategorySchema,
+    tool_input: z.record(z.unknown()).default({}),
+  })
+  .strict();
+
+export type ToolCallRequest = z.infer<typeof ToolCallRequestSchema>;
 
 // -----------------------------------------------------------------------------
 // Action result

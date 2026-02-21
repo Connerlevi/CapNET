@@ -11,7 +11,8 @@
     "proxy",
     "sandbox",
     "sdk",
-    "extension"
+    "extension",
+    "openclaw-plugin"
   ],
   "scripts": {
     "dev": "concurrently -n proxy,sandbox -c blue,green \"npm run dev -w proxy\" \"npm run dev -w sandbox\"",

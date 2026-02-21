@@ -212,9 +212,10 @@ async function main() {
     die(`Failed to issue capability: ${err instanceof Error ? err.message : err}`);
   }
   console.log(`    Cap ID: ${cap.cap_id}`);
-  console.log(`    Budget: $${(cap.constraints.max_amount_cents / 100).toFixed(2)}`);
+  const capConstraints = cap.constraints as { max_amount_cents: number; blocked_categories: string[] };
+  console.log(`    Budget: $${(capConstraints.max_amount_cents / 100).toFixed(2)}`);
   console.log(`    Expires: ${new Date(cap.expires_at).toLocaleString()}`);
-  console.log(`    Blocked: ${cap.constraints.blocked_categories.join(", ")}`);
+  console.log(`    Blocked: ${capConstraints.blocked_categories.join(", ")}`);
 
   // Step 4: Fetch catalog
   logStep(4, "Fetching merchant catalog...");

@@ -8,11 +8,18 @@
 // -----------------------------------------------------------------------------
 // Schemas (Zod validators)
 // -----------------------------------------------------------------------------
-export { CapDocSchema } from "./schemas/capdoc";
+export {
+  CapDocSchema,
+  SpendConstraintsSchema,
+  ToolCallConstraintsSchema,
+  ConstraintsSchema,
+} from "./schemas/capdoc";
 export {
   CartItemSchema,
   ActionRequestSchema,
   ActionResultSchema,
+  ToolCallRequestSchema,
+  ToolCategorySchema,
   DenyReasonSchema,
   ReasonSchema,
 } from "./schemas/action";
@@ -22,8 +29,8 @@ export type { ReceiptEvent } from "./schemas/receipt";
 // -----------------------------------------------------------------------------
 // Types (Zod-inferred)
 // -----------------------------------------------------------------------------
-export type { CapDoc } from "./schemas/capdoc";
-export type { CartItem, ActionRequest, ActionResult } from "./schemas/action";
+export type { CapDoc, SpendConstraints, ToolCallConstraints } from "./schemas/capdoc";
+export type { CartItem, ActionRequest, ActionResult, ToolCallRequest, ToolCategory } from "./schemas/action";
 export type { Receipt } from "./schemas/receipt";
 
 // -----------------------------------------------------------------------------

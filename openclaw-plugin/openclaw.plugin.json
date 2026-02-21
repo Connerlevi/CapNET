@@ -1,0 +1,43 @@
+{
+  "id": "capnet",
+  "name": "CapNet — Capability Enforcement",
+  "description": "Enforce scoped, time-bounded, revocable capabilities on agent tool calls. Every tool invocation is gated by the CapNet proxy before execution.",
+  "version": "0.1.0",
+  "configSchema": {
+    "proxyUrl": {
+      "type": "string",
+      "description": "CapNet proxy URL (default: http://127.0.0.1:3100)",
+      "default": "http://127.0.0.1:3100"
+    },
+    "agentId": {
+      "type": "string",
+      "description": "Agent identity string (e.g., agent:openclaw)"
+    },
+    "agentPubkey": {
+      "type": "string",
+      "description": "Agent Ed25519 public key (base64). Generated on first run if not provided."
+    },
+    "failPolicy": {
+      "type": "string",
+      "enum": ["closed", "open"],
+      "description": "What happens when proxy is unreachable: 'closed' (deny all, default) or 'open' (allow all)",
+      "default": "closed"
+    },
+    "timeoutMs": {
+      "type": "number",
+      "description": "Proxy request timeout in milliseconds (default: 500)",
+      "default": 500
+    },
+    "gatedTools": {
+      "type": "array",
+      "description": "Tool names to gate through CapNet. If empty/absent, ALL tools are gated.",
+      "items": { "type": "string" }
+    },
+    "exemptTools": {
+      "type": "array",
+      "description": "Tool names that bypass CapNet enforcement (e.g., health checks).",
+      "items": { "type": "string" },
+      "default": []
+    }
+  }
+}
