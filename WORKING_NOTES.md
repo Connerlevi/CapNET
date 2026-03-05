@@ -4,9 +4,9 @@
 
 ---
 
-## Last Updated: 2026-02-20
+## Last Updated: 2026-03-05
 
-## Current Status: READY FOR TESTING — Extension popup fix pushed, OpenClaw identified as Phase 1 target
+## Current Status: Delegation/Attenuation COMPLETE — Prompt 7 fully done, demo verified with cascade revocation
 
 ---
 
@@ -40,7 +40,7 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 | 4 | Proxy enforcement boundary | DONE | Full enforcement: vendor, category, budget, time, executor |
 | 5 | Sandbox + checkout + agent script | DONE | 17 item catalog, cart validation, checkout, orders API |
 | 6 | Revocation + post-revoke denial | DONE | POST /capability/revoke, persisted, CAP_REVOKED receipts |
-| 7 | Executor binding + attenuation | PARTIAL | Executor binding DONE; attenuation/delegation NOT STARTED |
+| 7 | Executor binding + attenuation | DONE | Executor binding + full delegation/attenuation with cascade revocation |
 | 8 | Demo polish + investor mode | NOT STARTED | |
 | 9 | Conformance tests | NOT STARTED | |
 
@@ -49,9 +49,9 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 ## What Exists (verified 2026-02-10)
 
 ### shared/ (@capnet/shared)
-- `src/schemas/capdoc.ts` — CapDoc v0.1 Zod schema (strict, cross-field validation)
-- `src/schemas/action.ts` — ActionRequest, ActionResult, CartItem, DenyReason schemas
-- `src/schemas/receipt.ts` — Receipt schema with JSON-safe meta, event validation
+- `src/schemas/capdoc.ts` — CapDoc v0.1 Zod schema (strict, cross-field validation, delegation fields)
+- `src/schemas/action.ts` — ActionRequest, ActionResult, CartItem, DenyReason schemas (includes delegation denial reasons)
+- `src/schemas/receipt.ts` — Receipt schema with JSON-safe meta, event validation (includes CAP_DELEGATED)
 - `src/crypto.ts` — Ed25519 with domain separation, browser-safe base64, key length validation
 - `src/index.ts` — Explicit barrel exports (no export *)
 - `package.json` — Hardened: exports map, files, sideEffects:false, pinned deps, rimraf clean
@@ -61,13 +61,18 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 - `src/index.ts` — Express server with:
   - `GET /health` — working
   - `POST /capability/issue` — signs and stores CapDocs, emits CAP_ISSUED receipt
-  - `POST /action/request` — full enforcement: vendor, category, budget, time, executor, signature
-  - `POST /capability/revoke` — revokes cap, persists to revoked.json, emits CAP_REVOKED
+  - `POST /capability/delegate` — delegates sub-capability with attenuation validation, chain checks
+  - `POST /action/request` — full enforcement: vendor, category, budget, time, executor, signature, parent chain
+  - `POST /action/toolcall` — tool call enforcement with parent chain validation
+  - `POST /capability/revoke` — cascade revocation (parent + all descendants), emits CAP_REVOKED per cap
   - `GET /capabilities` — lists all caps with is_revoked status
   - `GET /receipts` — query with limit/since params
-- `src/store.ts` — File-based persistence with atomic writes, revocation persistence
+- `src/store.ts` — File-based persistence with atomic writes, revocation persistence, delegation chain functions
+  - `findChildCaps(parentCapId)` — find all direct children of a cap
+  - `revokeCapCascade(capId)` — BFS cascade revocation with cycle protection
+  - `getDelegationChain(capId)` — walk parent chain to root
 - CORS configured for chrome-extension:// and localhost/127.0.0.1 origins
-- Verification order: signature → executor → time → revocation → constraints
+- Verification order: signature → executor → time → revocation → parent chain → constraints
 
 ### sandbox/ (@capnet/sandbox) — port 3200
 - `src/index.ts` — Express server with:
@@ -78,19 +83,22 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
   - `GET /orders` and `GET /orders/:id` — list/retrieve orders
 
 ### sdk/ (@capnet/sdk)
-- `src/index.ts` — CapNetClient class with all proxy methods, AbortController timeouts
-- `src/demo.ts` — Full lifecycle demo: issue → allow → deny → revoke → deny
+- `src/index.ts` — CapNetClient class with all proxy methods, AbortController timeouts, delegateCapability()
+- `src/demo.ts` — Full lifecycle demo: issue → delegate → allow → deny → cascade revoke → deny
   - Generates/loads real Ed25519 agent keypair (data/demo_agent_key.json)
+  - Generates sub-agent keypair for delegation demo
+  - Delegates with reduced budget ($20 from $50) and additional blocked category
+  - Demonstrates cascade revocation (parent revoke → child denied)
   - Imports types from @capnet/shared (no drift)
-  - Clear audit trail output
+  - Clear audit trail output (10 steps)
 
 ### extension/ (@capnet/extension)
 - Chrome MV3 manifest (permissions: storage, host: localhost:3100, 127.0.0.1:3100)
 - `src/popup/Popup.tsx` — Main UI with tabs (Templates, Active, Receipts)
 - `src/popup/Templates.tsx` — Template config + issue, agent identity panel
-- `src/popup/ActiveCaps.tsx` — Lists active/revoked caps, revoke button, time remaining
-- `src/popup/Receipts.tsx` — Audit timeline grouped by date, human-readable denial reasons
-- `src/popup/api.ts` — API client with timeout, Zod schema validation on all responses
+- `src/popup/ActiveCaps.tsx` — Lists active/revoked caps, revoke button, time remaining, parent/depth display
+- `src/popup/Receipts.tsx` — Audit timeline grouped by date, human-readable denial reasons, delegation metadata
+- `src/popup/api.ts` — API client with timeout, Zod schema validation, delegateCapability()
 - `src/popup/agentIdentity.ts` — Ed25519 keypair generation/persistence
 - `src/popup/popup.css` — Full styling with CSS variables, dark mode, accessibility
 - Webpack build → dist/ ready to load as unpacked extension
@@ -166,32 +174,41 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 
 ## What's Next
 
-### Priority 1: OpenClaw Integration (Phase 1 target)
+### Priority 1: Demo Polish (Prompt 8) + Three Demo Scenarios
+- Polish existing demo for investor-readiness
+- Build three demo scenarios from capnet_development_alignment.md:
+  1. **Runaway Agent** — Agent with credentials does destructive actions; CapNet blocks them
+  2. **Agent Hijack** — Prompt injection triggers gift card purchase; CapNet denies blocked category
+  3. **Multi-Agent Company** — Multiple agents with scoped capabilities (sales, finance, engineering)
+
+### Priority 2: SDK DX Overhaul
+- Simplify developer onboarding to `import { CapNet } from "capnet"` level
+- Intuitive capability definitions
+- Minimal integration friction
+
+### Priority 3: OpenClaw Integration (Phase 1 target)
 - Build CapNet skill for OpenClaw that routes agent actions through proxy
 - 140K GitHub stars, documented security issues — perfect demo of CapNet value
 - Three approaches: CapNet skill, proxy middleware, or MCP gateway
 
-### Priority 2: Extension popup bug
-- Popup displays as thin black bar on macOS Chrome
-- CSS fix pushed (html+body dimensions) but needs Mac testing
-- If still broken: right-click popup → Inspect → check console for errors
+### Priority 4: MCP Security Gateway
+- CapNet as policy enforcement gateway for MCP tools
+- Wraps MCP servers transparently — agents don't even know CapNet is there
 
-### Priority 3: Prompt 7 (remaining) — Attenuation/Delegation
-
-### Already Done
+### Completed (Prompt 7)
 - Executor binding (agent pubkey in cap, verified at enforcement)
 - Executor mismatch denial (`EXECUTOR_MISMATCH`)
-
-### Remaining
-1. Delegation endpoint: `POST /capability/delegate`
-2. Attenuation validation:
-   - budget ≤ parent
-   - expiry ≤ parent
-   - vendors ⊆ parent
-   - blocked ⊇ parent
-3. `parent_cap_id` in derived caps
-4. Receipts show delegation chain
-5. SDK delegation method
+- Delegation endpoint: `POST /capability/delegate`
+- Full attenuation validation (budget ≤ parent, expiry ≤ parent, vendors ⊆ parent, blocked ⊇ parent)
+- Tool call delegation support (tools ⊆ parent, blocked ⊇ parent, max_calls ≤ parent)
+- `parent_cap_id` and `delegation_depth` in derived caps
+- Parent chain validation on every action request
+- Cascade revocation (revoking parent revokes all descendants)
+- `CAP_DELEGATED` receipt event
+- `PARENT_REVOKED`, `PARENT_EXPIRED`, `DELEGATION_DEPTH_EXCEEDED`, `ATTENUATION_VIOLATION` denial reasons
+- SDK `delegateCapability()` method
+- Extension UI shows delegation chain (parent, depth, cascade metadata)
+- Demo script updated with delegation step (10 steps total)
 
 ---
 
@@ -323,6 +340,21 @@ Only after Tier 1 passes 100%:
 - **OpenClaw research**: Identified as top Phase 1 integration target (140K GitHub stars, documented security issues from Cisco, perfect CapNet use case)
 - **Investor doc regenerated** as `CapNet_Overview_v2.docx` with firewall distinction, transport methods, adapter architecture, MCP roadmap, and new FAQ entries
 - **5 commits pushed to GitHub** (Connerlevi/CapNET)
+
+### 2026-03-05 — Delegation/Attenuation (Prompt 7 complete)
+- **Reviewed two new docs**: `capnet-vision-explainer-v2.html` (investor-facing three-layer architecture) and `capnet_development_alignment.md` (3 demo scenarios + 5-phase dev priority)
+- **Consolidated development roadmap** integrating both new docs with existing priorities
+- **Implemented full delegation/attenuation system** (14 implementation steps):
+  - Schema changes: `parent_cap_id`, `delegation_depth` in CapDoc; `CAP_DELEGATED` receipt event; 4 new denial reasons
+  - Store functions: `findChildCaps`, `revokeCapCascade` (BFS with cycle protection), `getDelegationChain`
+  - `POST /capability/delegate` endpoint with full attenuation validation for both spend and tool_call
+  - Parent chain validation in both enforcement pipelines (`/action/request` and `/action/toolcall`)
+  - Cascade revocation: revoking parent revokes all descendants, emits receipt per cap
+  - SDK: `DelegateCapabilityRequest` interface + `delegateCapability()` method
+  - Extension: `delegateCapability()` API function, parent/depth display in ActiveCaps, CAP_DELEGATED + cascade metadata in Receipts
+  - Demo script: Added delegation step (sub-agent with $20 budget from $50 parent, extra blocked category), cascade revocation demo, updated from 9 to 10 steps
+- **All builds pass**: `npm run build`, proxy type-check, SDK type-check
+- **Demo verified**: `npm run demo:clean` passes all 10 steps — delegation, attenuation enforcement, cascade revocation all working
 
 ### 2026-02-18 — Doc audit, bug fixes, investor doc, initial commit
 - **Reinstalled node_modules from WSL** (fixed esbuild platform mismatch from Windows install)

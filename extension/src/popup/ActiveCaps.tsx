@@ -205,6 +205,22 @@ export function ActiveCaps({ refreshTrigger }: ActiveCapsProps) {
                     </div>
                   </>
                 )}
+                {cap.parent_cap_id && (
+                  <div className="cap-row">
+                    <span className="cap-label">Parent:</span>
+                    <span className="cap-value cap-value--id">
+                      {cap.parent_cap_id.length > 24
+                        ? cap.parent_cap_id.slice(0, 24) + "..."
+                        : cap.parent_cap_id}
+                    </span>
+                  </div>
+                )}
+                {cap.delegation_depth !== undefined && cap.delegation_depth > 0 && (
+                  <div className="cap-row">
+                    <span className="cap-label">Depth:</span>
+                    <span className="cap-value">{cap.delegation_depth}</span>
+                  </div>
+                )}
                 <div className="cap-row">
                   <span className="cap-label">Expires:</span>
                   <span className="cap-value">

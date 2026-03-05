@@ -129,6 +129,8 @@ export const CapDocSchema = z
     constraints: ConstraintsSchema,
     revocation: RevocationSchema,
     proof: ProofSchema,
+    parent_cap_id: z.string().min(8).max(128).optional(),
+    delegation_depth: z.number().int().nonnegative().max(10).optional(),
   })
   .strict()
   .superRefine((cap, ctx) => {

@@ -387,45 +387,52 @@ These principles should guide all implementation choices:
 
 ---
 
-## 17) Implementation status (as of 2026-02-10)
+## 17) Implementation status (as of 2026-03-05)
 
-### Phase 0 Core: COMPLETE ✓
+### Phase 0 Core: COMPLETE ✓ (including delegation)
 
 **Demo verified on:** Windows 11, macOS, Linux (WSL2)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| CapDoc v0.1 schema | Done | Zod, Ed25519 signatures, cross-field validation |
-| Proxy enforcement | Done | Budget, vendor, category, time, executor, revocation |
+| CapDoc v0.1 schema | Done | Zod, Ed25519 signatures, cross-field validation, delegation fields |
+| Proxy enforcement | Done | Budget, vendor, category, time, executor, revocation, parent chain |
+| Delegation/attenuation | Done | Sub-cap derivation, monotone reduction, cascade revocation |
 | Sandbox merchant | Done | 16-item catalog, cart, checkout, orders |
-| Chrome extension | Done | Templates, Active Caps, Receipts, agent identity |
-| SDK client | Done | All endpoints, timeouts, demo script |
-| Audit trail | Done | Receipts with event types, denial reasons |
+| Chrome extension | Done | Templates, Active Caps, Receipts, agent identity, delegation display |
+| SDK client | Done | All endpoints, timeouts, delegation, demo script (10 steps) |
+| Audit trail | Done | Receipts with event types, denial reasons, delegation metadata |
 | Cross-platform scripts | Done | Windows/macOS/Linux compatible |
 
-### Critical Blocker: RESOLVED
+### Delegation System (completed 2026-03-05)
 
-The extension now generates and persists real Ed25519 agent keypairs instead of using a hard-coded zero pubkey. This enables proper testing of:
-- Executor binding enforcement
-- Multiple agent identities
-- Executor mismatch denial
-- Meaningful receipt attribution
+The delegation system enables deriving sub-capabilities with monotonically reduced authority:
+- `POST /capability/delegate` — derives child cap from parent with attenuation validation
+- **Spend attenuation**: budget ≤ parent, vendors ⊆ parent, blocked ⊇ parent, expiry ≤ parent
+- **Tool call attenuation**: tools ⊆ parent, blocked categories ⊇ parent, max_calls ≤ parent
+- **Parent chain validation**: Every action request walks the delegation chain; if any ancestor is revoked/expired, action is denied
+- **Cascade revocation**: Revoking a parent revokes all descendants (BFS traversal)
+- **Max delegation depth**: 3 (configurable via `CAPNET_MAX_DELEGATION_DEPTH` env var)
+- **New receipt event**: `CAP_DELEGATED` with parent metadata
+- **New denial reasons**: `PARENT_REVOKED`, `PARENT_EXPIRED`, `DELEGATION_DEPTH_EXCEEDED`, `ATTENUATION_VIOLATION`
 
 ### Ready to Test
 
-The demo story works end-to-end:
-1. User issues capability via template UI
-2. Agent makes allowed purchase → ALLOWED
-3. Agent attempts blocked category → DENIED (category_blocked)
-4. User revokes capability
-5. Agent attempts any action → DENIED (revoked)
-6. Receipts show complete audit trail
+The demo story works end-to-end (10 steps):
+1. User issues capability via template UI ($50 budget)
+2. Agent delegates sub-capability to sub-agent ($20 budget, extra blocked category)
+3. Sub-agent makes allowed purchase → ALLOWED
+4. Sub-agent attempts blocked category → DENIED (category_blocked)
+5. User revokes parent capability → cascade revokes child
+6. Sub-agent attempts any action → DENIED (revoked)
+7. Receipts show complete audit trail including delegation events
 
 ### Remaining for Phase 0+
 
-- Attenuation/delegation (derive sub-capabilities)
-- Demo polish (investor mode)
+- Demo polish (investor mode, three demo scenarios)
+- SDK DX overhaul (simpler developer onboarding)
 - Conformance tests
+- OpenClaw integration (Phase 1)
 
 ### Phase 1 Integration Targets (pick one to prove "not a toy")
 

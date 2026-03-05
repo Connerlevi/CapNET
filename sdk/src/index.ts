@@ -52,6 +52,23 @@ export interface IssueToolCallCapabilityRequest {
   };
 }
 
+export interface DelegateCapabilityRequest {
+  parent_cap_id: string;
+  new_executor: {
+    agent_id: string;
+    agent_pubkey: string;
+  };
+  constraints: {
+    max_amount_cents?: number;
+    allowed_vendors?: string[];
+    blocked_categories?: string[];
+    allowed_tools?: string[];
+    blocked_tool_categories?: string[];
+    max_calls?: number;
+  };
+  expires_at?: string;
+}
+
 export interface RevokeResponse {
   success: boolean;
   cap_id: string;
@@ -155,6 +172,14 @@ export class CapNetClient {
   /** List all capabilities with revocation status */
   async listCapabilities(): Promise<(CapDoc & { is_revoked: boolean })[]> {
     return this.request<(CapDoc & { is_revoked: boolean })[]>("/capabilities");
+  }
+
+  /** Delegate (attenuate) an existing capability to a new executor */
+  async delegateCapability(req: DelegateCapabilityRequest): Promise<CapDoc> {
+    return this.request<CapDoc>("/capability/delegate", {
+      method: "POST",
+      json: req,
+    });
   }
 
   /** Revoke a capability by ID */

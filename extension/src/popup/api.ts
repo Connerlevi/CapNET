@@ -107,6 +107,23 @@ export interface IssueCapabilityRequest {
   };
 }
 
+export interface DelegateCapabilityRequest {
+  parent_cap_id: string;
+  new_executor: {
+    agent_id: string;
+    agent_pubkey: string;
+  };
+  constraints: {
+    max_amount_cents?: number;
+    allowed_vendors?: string[];
+    blocked_categories?: string[];
+    allowed_tools?: string[];
+    blocked_tool_categories?: string[];
+    max_calls?: number;
+  };
+  expires_at?: string;
+}
+
 export interface RevokeResponse {
   success: boolean;
   cap_id: string;
@@ -179,6 +196,21 @@ export async function listReceipts(options?: {
 
   const raw = await fetchJsonWithTimeout<unknown>(url);
   return z.array(ReceiptSchema).parse(raw);
+}
+
+/**
+ * Delegate (attenuate) a capability to a new executor.
+ */
+export async function delegateCapability(
+  request: DelegateCapabilityRequest
+): Promise<CapDoc> {
+  const base = getProxyBaseUrl();
+  const raw = await fetchJsonWithTimeout<unknown>(`${base}/capability/delegate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  return CapDocSchema.parse(raw);
 }
 
 /**

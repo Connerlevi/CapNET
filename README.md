@@ -26,13 +26,15 @@ Quick reference: [TESTING_QUICKSTART.md](TESTING_QUICKSTART.md) | Full runbook: 
 
 ---
 
-## Demo in 5 Steps
+## Demo in 7 Steps
 
-1. **User sets policy** → "Groceries, $200 max, block alcohol" (extension UI)
+1. **User sets policy** → "Groceries, $50 max, block alcohol" (extension UI)
 2. **System mints capability** → Signed, time-bounded, executor-bound (proxy)
-3. **Agent shops** → Checkout succeeds within constraints (sandbox + proxy)
-4. **Agent tries forbidden item** → Blocked with clear reason (proxy)
-5. **User revokes** → All further actions denied instantly (proxy + receipts)
+3. **Agent delegates sub-capability** → $20 budget, extra category blocked (proxy)
+4. **Sub-agent shops** → Checkout succeeds within constraints (sandbox + proxy)
+5. **Sub-agent tries forbidden item** → Blocked with clear reason (proxy)
+6. **User revokes parent** → Cascade revokes all children instantly (proxy + receipts)
+7. **Sub-agent tries anything** → Denied, capability chain revoked (proxy + receipts)
 
 ## Quick Start
 
@@ -54,7 +56,7 @@ npm run build:extension
 ## Run Demo Script
 
 ```bash
-npm run demo     # Full lifecycle: issue → allow → deny → revoke → deny
+npm run demo     # Full lifecycle: issue → delegate → allow → deny → cascade revoke → deny
 ```
 
 ## Project Structure
@@ -93,6 +95,9 @@ SDK (client library for agents)
 | Category blocking (alcohol, tobacco, gift_cards) | Working |
 | Time semantics (expires_at, not_before) | Working |
 | Executor binding (agent pubkey) | Working |
+| Delegation/attenuation (sub-capabilities) | Working |
+| Parent chain validation | Working |
+| Cascade revocation (parent → all children) | Working |
 | Revocation with persistence | Working |
 | Audit trail (receipts) | Working |
 | Wallet UI (templates, caps, receipts) | Working |
@@ -124,9 +129,10 @@ npm run typecheck:all # Typecheck all + build extension
 2. **Load extension:** Build and load `extension/dist/` in Chrome
 3. **Issue capability:** Click "Groceries" template, set budget, issue
 4. **Run demo:** `npm run demo` shows:
-   - Groceries purchase: ALLOWED
+   - Delegate sub-capability ($20 from $50, extra blocked category)
+   - Groceries purchase: ALLOWED (sub-agent)
    - Alcohol purchase: DENIED (category blocked)
-   - Revoke capability
+   - Revoke parent → cascade revokes child
    - Any purchase: DENIED (revoked)
 5. **View receipts:** Extension shows full audit trail
 
@@ -145,4 +151,4 @@ npm run typecheck:all # Typecheck all + build extension
 
 ## Status
 
-**Phase 0 Complete** — Ready for testing. All core scenarios verified (2026-02-20).
+**Phase 0 Complete** (including delegation/attenuation) — Ready for testing. All core scenarios verified (2026-03-05).

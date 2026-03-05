@@ -53,6 +53,10 @@ export const DenyReasonSchema = z.union([
   z.literal("TOOL_NOT_ALLOWED"),
   z.literal("ACTION_NOT_ALLOWED"),
   z.literal("PROXY_UNREACHABLE"),
+  z.literal("PARENT_REVOKED"),
+  z.literal("PARENT_EXPIRED"),
+  z.literal("DELEGATION_DEPTH_EXCEEDED"),
+  z.literal("ATTENUATION_VIOLATION"),
   z.string().regex(/^CATEGORY_BLOCKED:[a-z0-9_-]+$/i, "CATEGORY_BLOCKED:<category>"),
   z.string().regex(/^TOOL_CATEGORY_BLOCKED:[a-z0-9_-]+$/i, "TOOL_CATEGORY_BLOCKED:<category>"),
 ]);

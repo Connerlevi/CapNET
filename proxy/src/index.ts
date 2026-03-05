@@ -32,6 +32,9 @@ import {
   getCap,
   getAllCaps,
   findCapForAgent,
+  findChildCaps,
+  getDelegationChain,
+  revokeCapCascade,
   isRevoked,
   revokeCap,
   appendReceipt,
@@ -117,6 +120,8 @@ function makeReceiptId(): string {
 function makeCapId(): string {
   return `cap_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
 }
+
+const MAX_DELEGATION_DEPTH = Number(process.env.CAPNET_MAX_DELEGATION_DEPTH) || 3;
 
 /** JSON-safe value type for receipt meta */
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -257,6 +262,293 @@ app.post("/capability/issue", (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
+// POST /capability/delegate — Derive attenuated sub-capability
+// -----------------------------------------------------------------------------
+
+const DelegateInputSchema = z
+  .object({
+    parent_cap_id: z.string().min(8).max(128),
+    new_executor: z
+      .object({
+        agent_id: z.string().min(3).max(128),
+        agent_pubkey: Ed25519PubkeySchema,
+      })
+      .strict(),
+    constraints: z
+      .object({
+        // Spend attenuation (optional — only if parent is spend)
+        max_amount_cents: z.number().int().positive().max(100_000_000).optional(),
+        allowed_vendors: z.array(NormalizedString).min(1).max(20).optional(),
+        blocked_categories: z.array(NormalizedString).max(50).optional(),
+        // Tool call attenuation (optional — only if parent is tool_call)
+        allowed_tools: z.array(NormalizedString).min(1).max(100).optional(),
+        blocked_tool_categories: z.array(NormalizedString).max(50).optional(),
+        max_calls: z.number().int().positive().optional(),
+      })
+      .strict(),
+    expires_at: z.string().datetime().optional(),
+  })
+  .strict();
+
+app.post("/capability/delegate", (req, res) => {
+  const parsed = DelegateInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "INVALID_INPUT", details: parsed.error.flatten() });
+    return;
+  }
+  const input = parsed.data;
+
+  // 1. Look up parent
+  const parent = getCap(input.parent_cap_id);
+  if (!parent) {
+    res.status(404).json({ error: "PARENT_NOT_FOUND", cap_id: input.parent_cap_id });
+    return;
+  }
+
+  // 2. Check parent not revoked
+  if (isRevoked(parent.cap_id)) {
+    res.status(400).json({ error: "PARENT_REVOKED", cap_id: parent.cap_id });
+    return;
+  }
+
+  // 3. Check parent not expired
+  const nowMs = Date.now();
+  const parentExpMs = Date.parse(parent.expires_at);
+  if (!Number.isFinite(parentExpMs) || parentExpMs < nowMs) {
+    res.status(400).json({ error: "PARENT_EXPIRED", cap_id: parent.cap_id });
+    return;
+  }
+
+  // 4. Check delegation depth
+  const parentDepth = parent.delegation_depth ?? 0;
+  if (parentDepth >= MAX_DELEGATION_DEPTH) {
+    res.status(400).json({
+      error: "DELEGATION_DEPTH_EXCEEDED",
+      max_depth: MAX_DELEGATION_DEPTH,
+      parent_depth: parentDepth,
+    });
+    return;
+  }
+
+  // 5. Validate full ancestor chain
+  const chain = getDelegationChain(parent.cap_id);
+  for (const ancestor of chain) {
+    if (isRevoked(ancestor.cap_id)) {
+      res.status(400).json({ error: "ANCESTOR_REVOKED", cap_id: ancestor.cap_id });
+      return;
+    }
+    const ancestorExpMs = Date.parse(ancestor.expires_at);
+    if (!Number.isFinite(ancestorExpMs) || ancestorExpMs < nowMs) {
+      res.status(400).json({ error: "ANCESTOR_EXPIRED", cap_id: ancestor.cap_id });
+      return;
+    }
+  }
+
+  // 6. Validate attenuation + build delegated cap
+  if (isSpendConstraints(parent.constraints)) {
+    const pc = parent.constraints;
+
+    const newBudget = input.constraints.max_amount_cents ?? pc.max_amount_cents;
+    if (newBudget > pc.max_amount_cents) {
+      res.status(400).json({
+        error: "ATTENUATION_VIOLATION",
+        detail: `budget ${newBudget} exceeds parent ${pc.max_amount_cents}`,
+      });
+      return;
+    }
+
+    const newVendors = input.constraints.allowed_vendors ?? pc.allowed_vendors;
+    for (const v of newVendors) {
+      if (!pc.allowed_vendors.includes(v)) {
+        res.status(400).json({
+          error: "ATTENUATION_VIOLATION",
+          detail: `vendor "${v}" not in parent allowed_vendors`,
+        });
+        return;
+      }
+    }
+
+    const newBlocked = input.constraints.blocked_categories ?? pc.blocked_categories;
+    for (const cat of pc.blocked_categories) {
+      if (!newBlocked.includes(cat)) {
+        res.status(400).json({
+          error: "ATTENUATION_VIOLATION",
+          detail: `cannot remove blocked category "${cat}" from parent`,
+        });
+        return;
+      }
+    }
+
+    const newExpiresAt = input.expires_at ?? parent.expires_at;
+    const newExpMs = Date.parse(newExpiresAt);
+    if (!Number.isFinite(newExpMs) || newExpMs > parentExpMs) {
+      res.status(400).json({
+        error: "ATTENUATION_VIOLATION",
+        detail: "expires_at exceeds parent expiry",
+      });
+      return;
+    }
+
+    const vendor = newVendors[0];
+    if (!vendor) {
+      res.status(400).json({ error: "INVALID_INPUT", message: "allowed_vendors must have at least one entry" });
+      return;
+    }
+
+    const now = new Date();
+    const unsigned: Omit<CapDoc, "proof"> = {
+      version: "capdoc/0.1",
+      cap_id: makeCapId(),
+      issued_at: now.toISOString(),
+      expires_at: newExpiresAt,
+      issuer: { id: "wallet:local", pubkey: issuerKeys.publicKeyB64 },
+      subject: parent.subject,
+      executor: {
+        agent_id: input.new_executor.agent_id,
+        agent_pubkey: input.new_executor.agent_pubkey,
+      },
+      resource: { type: parent.resource.type, vendor },
+      actions: parent.actions,
+      constraints: {
+        currency: "USD",
+        max_amount_cents: newBudget,
+        allowed_vendors: newVendors,
+        blocked_categories: newBlocked,
+      },
+      revocation: parent.revocation,
+      parent_cap_id: parent.cap_id,
+      delegation_depth: parentDepth + 1,
+    };
+
+    const sig = signObjectEd25519(unsigned, issuerKeys.secretKeyB64, "capdoc");
+    const capdocRaw: CapDoc = { ...unsigned, proof: { alg: "ed25519", sig } };
+
+    const capdocParsed = CapDocSchema.safeParse(capdocRaw);
+    if (!capdocParsed.success) {
+      console.error("[proxy] CapDoc schema validation failed:", capdocParsed.error.flatten());
+      res.status(500).json({ error: "CAPDOC_SCHEMA_FAILURE" });
+      return;
+    }
+    const capdoc = capdocParsed.data;
+
+    if (!verifyObjectEd25519(capUnsignedPayload(capdoc), sig, issuerKeys.publicKeyB64, "capdoc")) {
+      res.status(500).json({ error: "SIGNING_FAILURE" });
+      return;
+    }
+
+    storeCap(capdoc);
+
+    emitReceipt({
+      event: "CAP_DELEGATED",
+      cap_id: capdoc.cap_id,
+      agent_id: input.new_executor.agent_id,
+      summary: { amount_cents: newBudget },
+      meta: { parent_cap_id: parent.cap_id, delegation_depth: parentDepth + 1 },
+    });
+
+    res.json(capdoc);
+
+  } else if (isToolCallConstraints(parent.constraints)) {
+    const pc = parent.constraints;
+
+    const newTools = input.constraints.allowed_tools ?? pc.allowed_tools;
+    for (const t of newTools) {
+      if (!pc.allowed_tools.includes(t)) {
+        res.status(400).json({
+          error: "ATTENUATION_VIOLATION",
+          detail: `tool "${t}" not in parent allowed_tools`,
+        });
+        return;
+      }
+    }
+
+    const newBlockedCats = input.constraints.blocked_tool_categories ?? pc.blocked_tool_categories;
+    for (const cat of pc.blocked_tool_categories) {
+      if (!newBlockedCats.includes(cat)) {
+        res.status(400).json({
+          error: "ATTENUATION_VIOLATION",
+          detail: `cannot remove blocked tool category "${cat}" from parent`,
+        });
+        return;
+      }
+    }
+
+    const newMaxCalls = input.constraints.max_calls ?? pc.max_calls;
+    if (pc.max_calls !== undefined && newMaxCalls !== undefined && newMaxCalls > pc.max_calls) {
+      res.status(400).json({
+        error: "ATTENUATION_VIOLATION",
+        detail: `max_calls ${newMaxCalls} exceeds parent ${pc.max_calls}`,
+      });
+      return;
+    }
+
+    const newExpiresAt = input.expires_at ?? parent.expires_at;
+    const newExpMs = Date.parse(newExpiresAt);
+    if (!Number.isFinite(newExpMs) || newExpMs > parentExpMs) {
+      res.status(400).json({
+        error: "ATTENUATION_VIOLATION",
+        detail: "expires_at exceeds parent expiry",
+      });
+      return;
+    }
+
+    const now = new Date();
+    const unsigned: Omit<CapDoc, "proof"> = {
+      version: "capdoc/0.1",
+      cap_id: makeCapId(),
+      issued_at: now.toISOString(),
+      expires_at: newExpiresAt,
+      issuer: { id: "wallet:local", pubkey: issuerKeys.publicKeyB64 },
+      subject: parent.subject,
+      executor: {
+        agent_id: input.new_executor.agent_id,
+        agent_pubkey: input.new_executor.agent_pubkey,
+      },
+      resource: parent.resource,
+      actions: parent.actions,
+      constraints: {
+        allowed_tools: newTools,
+        blocked_tool_categories: newBlockedCats,
+        ...(newMaxCalls !== undefined ? { max_calls: newMaxCalls } : {}),
+      },
+      revocation: parent.revocation,
+      parent_cap_id: parent.cap_id,
+      delegation_depth: parentDepth + 1,
+    };
+
+    const sig = signObjectEd25519(unsigned, issuerKeys.secretKeyB64, "capdoc");
+    const capdocRaw: CapDoc = { ...unsigned, proof: { alg: "ed25519", sig } };
+
+    const capdocParsed = CapDocSchema.safeParse(capdocRaw);
+    if (!capdocParsed.success) {
+      console.error("[proxy] CapDoc schema validation failed:", capdocParsed.error.flatten());
+      res.status(500).json({ error: "CAPDOC_SCHEMA_FAILURE" });
+      return;
+    }
+    const capdoc = capdocParsed.data;
+
+    if (!verifyObjectEd25519(capUnsignedPayload(capdoc), sig, issuerKeys.publicKeyB64, "capdoc")) {
+      res.status(500).json({ error: "SIGNING_FAILURE" });
+      return;
+    }
+
+    storeCap(capdoc);
+
+    emitReceipt({
+      event: "CAP_DELEGATED",
+      cap_id: capdoc.cap_id,
+      agent_id: input.new_executor.agent_id,
+      summary: {},
+      meta: { parent_cap_id: parent.cap_id, delegation_depth: parentDepth + 1, type: "tool_call" },
+    });
+
+    res.json(capdoc);
+  } else {
+    res.status(400).json({ error: "UNSUPPORTED_CONSTRAINT_TYPE" });
+  }
+});
+
+// -----------------------------------------------------------------------------
 // POST /action/request
 // -----------------------------------------------------------------------------
 
@@ -370,6 +662,23 @@ app.post("/action/request", (req, res) => {
   if (isRevoked(cap.cap_id)) {
     res.json(deny("REVOKED", cap.cap_id));
     return;
+  }
+
+  // 4b. Check parent chain validity (for delegated caps)
+  if (cap.parent_cap_id) {
+    const chain = getDelegationChain(cap.cap_id);
+    for (const ancestor of chain) {
+      if (ancestor.cap_id === cap.cap_id) continue;
+      if (isRevoked(ancestor.cap_id)) {
+        res.json(deny("PARENT_REVOKED", cap.cap_id));
+        return;
+      }
+      const ancestorExpMs = Date.parse(ancestor.expires_at);
+      if (!Number.isFinite(ancestorExpMs) || ancestorExpMs < nowMs) {
+        res.json(deny("PARENT_EXPIRED", cap.cap_id));
+        return;
+      }
+    }
   }
 
   // 5. Check action is allowed by this cap
@@ -621,6 +930,24 @@ app.post("/action/toolcall", (req, res) => {
     return;
   }
 
+  // 4b. Check parent chain validity (for delegated caps)
+  if (cap.parent_cap_id) {
+    const nowMsChain = Date.now();
+    const chain = getDelegationChain(cap.cap_id);
+    for (const ancestor of chain) {
+      if (ancestor.cap_id === cap.cap_id) continue;
+      if (isRevoked(ancestor.cap_id)) {
+        res.json(deny("PARENT_REVOKED", cap.cap_id));
+        return;
+      }
+      const ancestorExpMs = Date.parse(ancestor.expires_at);
+      if (!Number.isFinite(ancestorExpMs) || ancestorExpMs < nowMsChain) {
+        res.json(deny("PARENT_EXPIRED", cap.cap_id));
+        return;
+      }
+    }
+  }
+
   // 5. Check action type
   if (!cap.actions.includes("tool_call")) {
     res.json(deny("ACTION_NOT_ALLOWED", cap.cap_id));
@@ -701,21 +1028,28 @@ app.post("/capability/revoke", (req, res) => {
     return;
   }
 
-  // Revoke the capability
-  revokeCap(cap_id);
+  // Revoke the capability and all descendants (cascade)
+  const revokedIds = revokeCapCascade(cap_id);
 
-  // Emit revocation receipt
-  emitReceipt({
-    event: "CAP_REVOKED",
-    cap_id,
-    agent_id: cap.executor.agent_id,
-    summary: {},
-  });
+  // Emit revocation receipt for each revoked cap
+  for (const revokedId of revokedIds) {
+    const revokedCap = getCap(revokedId);
+    emitReceipt({
+      event: "CAP_REVOKED",
+      cap_id: revokedId,
+      agent_id: revokedCap?.executor.agent_id,
+      summary: {},
+      meta: revokedId === cap_id ? {} : { cascade_from: cap_id },
+    });
+  }
 
   res.json({
     success: true,
     cap_id,
-    message: "Capability revoked. All further actions will be denied.",
+    revoked_count: revokedIds.length,
+    message: revokedIds.length > 1
+      ? `Capability and ${revokedIds.length - 1} descendant(s) revoked.`
+      : "Capability revoked. All further actions will be denied.",
   });
 });
 

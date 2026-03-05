@@ -196,6 +196,63 @@ export function getReceipts(limit = 100, since?: string): Receipt[] {
 }
 
 // -----------------------------------------------------------------------------
+// Delegation helpers
+// -----------------------------------------------------------------------------
+
+/** Find all caps whose parent_cap_id matches the given cap ID */
+export function findChildCaps(parentCapId: string): CapDoc[] {
+  const caps = loadCaps();
+  return Object.values(caps).filter(
+    (c) => c.parent_cap_id === parentCapId
+  );
+}
+
+/**
+ * Revoke a capability and all its descendants (BFS cascade).
+ * Returns the list of all newly revoked cap IDs.
+ */
+export function revokeCapCascade(capId: string): string[] {
+  loadRevoked();
+  const revoked: string[] = [];
+  const queue = [capId];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (revokedSet.has(current)) continue;
+    revokedSet.add(current);
+    revoked.push(current);
+    const children = findChildCaps(current);
+    for (const child of children) {
+      queue.push(child.cap_id);
+    }
+  }
+
+  if (revoked.length > 0) saveRevoked();
+  return revoked;
+}
+
+/**
+ * Walk the parent chain from a cap up to the root.
+ * Returns [child, parent, grandparent, ...root].
+ * Includes cycle protection.
+ */
+export function getDelegationChain(capId: string): CapDoc[] {
+  const chain: CapDoc[] = [];
+  let current = getCap(capId);
+  const seen = new Set<string>();
+
+  while (current) {
+    if (seen.has(current.cap_id)) break;
+    seen.add(current.cap_id);
+    chain.push(current);
+    if (!current.parent_cap_id) break;
+    current = getCap(current.parent_cap_id);
+  }
+
+  return chain;
+}
+
+// -----------------------------------------------------------------------------
 // Issuer keys
 // -----------------------------------------------------------------------------
 

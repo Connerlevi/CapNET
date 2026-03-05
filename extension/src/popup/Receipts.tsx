@@ -37,6 +37,7 @@ const EVENT_CONFIG: Record<string, { icon: string; label: string; color: string 
   ACTION_ATTEMPT: { icon: "🔄", label: "Action Attempted", color: "gray" },
   ACTION_ALLOWED: { icon: "✅", label: "Action Allowed", color: "green" },
   ACTION_DENIED: { icon: "❌", label: "Action Denied", color: "red" },
+  CAP_DELEGATED: { icon: "🔗", label: "Capability Delegated", color: "blue" },
 };
 
 // Human-readable denial reasons (expanded for future-proofing)
@@ -56,6 +57,10 @@ const DENIAL_REASONS: Record<string, string> = {
   AMOUNT_OVERFLOW: "Amount calculation overflow",
   VENDOR_MISSING: "Vendor not specified",
   CATEGORY_MISSING: "Category not specified",
+  PARENT_REVOKED: "Parent capability revoked",
+  PARENT_EXPIRED: "Parent capability expired",
+  DELEGATION_DEPTH_EXCEEDED: "Delegation depth limit reached",
+  ATTENUATION_VIOLATION: "Attenuation constraint violated",
 };
 
 const formatReason = (reason: string | undefined): string => {
@@ -212,6 +217,16 @@ export function Receipts({ refreshTrigger }: ReceiptsProps) {
                         {r.summary?.denied_reason && (
                           <span className="receipt-detail receipt-detail--reason">
                             {formatReason(r.summary.denied_reason)}
+                          </span>
+                        )}
+                        {r.meta?.parent_cap_id && typeof r.meta.parent_cap_id === "string" && (
+                          <span className="receipt-detail receipt-detail--id">
+                            Parent: {truncateId(r.meta.parent_cap_id)}
+                          </span>
+                        )}
+                        {r.meta?.cascade_from && typeof r.meta.cascade_from === "string" && (
+                          <span className="receipt-detail receipt-detail--id">
+                            Cascade from: {truncateId(r.meta.cascade_from)}
                           </span>
                         )}
                       </div>

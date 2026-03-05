@@ -65,6 +65,7 @@ export const ReceiptEventSchema = z.enum([
   "ACTION_DENIED",
   "CAP_ISSUED",
   "CAP_REVOKED",
+  "CAP_DELEGATED",
 ]);
 
 export type ReceiptEvent = z.infer<typeof ReceiptEventSchema>;
@@ -146,6 +147,14 @@ export const ReceiptSchema = z
         code: z.ZodIssueCode.custom,
         path: ["cap_id"],
         message: "cap_id is required for CAP_REVOKED event",
+      });
+    }
+
+    if (r.event === "CAP_DELEGATED" && !r.cap_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cap_id"],
+        message: "cap_id is required for CAP_DELEGATED event",
       });
     }
 
