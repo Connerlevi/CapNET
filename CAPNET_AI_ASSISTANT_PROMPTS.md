@@ -16,8 +16,8 @@
 | 4 | Proxy enforcement boundary | ✅ COMPLETE |
 | 5 | Merchant sandbox + checkout | ✅ COMPLETE |
 | 6 | Revocation + post-revoke denial | ✅ COMPLETE |
-| 7 | Executor binding + attenuation | PARTIAL (executor done, attenuation pending) |
-| 8 | Demo polish + investor mode | PENDING |
+| 7 | Executor binding + attenuation | ✅ COMPLETE |
+| 8 | Demo polish + investor mode | IN PROGRESS |
 | 9 | Conformance tests | PENDING |
 
 ---

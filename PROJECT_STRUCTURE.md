@@ -1,6 +1,6 @@
 # CapNet Project Structure
 
-> Updated: 2026-02-20 | Status: Phase 0 Complete
+> Updated: 2026-03-05 | Status: Phase 0 Complete + Demo Scenarios
 
 ```
 CapNET/
@@ -47,7 +47,13 @@ CapNET/
 │   ├── tsconfig.json
 │   └── src/
 │       ├── index.ts             # CapNetClient class with all proxy methods
-│       └── demo.ts              # Full lifecycle demo script (issue → allow → deny → revoke)
+│       ├── demo.ts              # Core lifecycle demo (issue → delegate → allow → deny → revoke)
+│       ├── demo-utils.ts        # Shared utilities for demo scripts
+│       └── scenarios/
+│           ├── runaway-agent.ts      # Scenario 1: Cleanup bot with tool_call enforcement
+│           ├── agent-hijack.ts       # Scenario 2: Prompt injection with spend enforcement
+│           ├── multi-agent-company.ts # Scenario 3: Role isolation + delegation + cascade
+│           └── run-all.ts            # Runs all 3 scenarios sequentially
 │
 ├── extension/                   # @capnet/extension — Chrome MV3 wallet UI
 │   ├── package.json
@@ -116,9 +122,12 @@ CapNET/
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Health check |
-| POST | `/capability/issue` | Issue a new capability |
-| POST | `/action/request` | Request action (enforces cap constraints) |
-| POST | `/capability/revoke` | Revoke a capability |
+| POST | `/capability/issue` | Issue a spend capability |
+| POST | `/capability/issue/toolcall` | Issue a tool_call capability |
+| POST | `/capability/delegate` | Delegate sub-capability with attenuation |
+| POST | `/action/request` | Request spend action (enforces cap constraints) |
+| POST | `/action/toolcall` | Request tool call action (enforces tool constraints) |
+| POST | `/capability/revoke` | Revoke a capability (cascade to children) |
 | GET | `/capabilities` | List all capabilities |
 | GET | `/receipts` | Query receipt log |
 
@@ -156,8 +165,14 @@ npm install
 # Run proxy + sandbox in dev mode
 npm run dev
 
-# Run full demo lifecycle (issue → allow → deny → revoke → deny)
+# Run core lifecycle demo (issue → delegate → allow → deny → revoke)
 npm run demo
+
+# Run demo scenarios
+npm run demo:runaway    # Scenario 1: Runaway Agent (tool_call enforcement)
+npm run demo:hijack     # Scenario 2: Agent Hijack (spend enforcement)
+npm run demo:company    # Scenario 3: Multi-Agent Company (role isolation)
+npm run demo:all        # Run all 3 scenarios
 
 # Clear data and run demo (fresh start)
 npm run demo:clean

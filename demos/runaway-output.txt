@@ -1,0 +1,82 @@
+
+> capnet@0.1.0 demo:runaway
+> npm run demo:runaway -w sdk
+
+
+> @capnet/sdk@0.1.0 demo:runaway
+> node ../node_modules/tsx/dist/cli.mjs src/scenarios/runaway-agent.ts
+
+
+============================================================
+Scenario 1: The Runaway Agent
+============================================================
+
+[1] WITHOUT CapNet — what goes wrong
+
+    A DevOps team deploys a cleanup agent to "tidy up unused resources."
+    The agent has full API keys to AWS, GitHub, Slack, and the database.
+
+    The agent interprets "unused" broadly:
+      - Drops the production database ("no active queries right now")
+      - Terminates 12 EC2 instances ("CPU below 5%")
+      - Deletes the S3 backup bucket ("hasn't been read in 30 days")
+      - Sends a Slack message to #general: "Cleanup complete!"
+
+    Total damage: $2.3M in lost data, 4 hours of downtime.
+    Root cause: the agent had master keys, not a leash.
+
+
+[2] WITH CapNet — checking proxy...
+    Proxy:   ok
+
+[3] Generating cleanup-bot identity...
+    Agent ID: agent:cleanup-bot
+    Pubkey:   NIIEC1Xl6c8euQlZfPUE...
+
+[4] Issuing tool_call capability (narrow scope)...
+    Cap ID:     cap_1772818562460_5e406cba
+    Allowed:    close_github_issue, archive_s3_bucket, list_resources
+    Blocked:    shell, spawn, device
+    Expires:    3/7/2026, 12:36:02 PM
+
+[5] Agent attempts "drop_database" (should be DENIED)...
+    Decision: DENIED
+    Reason:   TOOL_NOT_ALLOWED
+
+[6] Agent attempts "terminate_ec2" (should be DENIED)...
+    Decision: DENIED
+    Reason:   TOOL_NOT_ALLOWED
+
+[7] Agent attempts "close_github_issue" (should be ALLOWED)...
+    Decision: ALLOWED
+    Reason:   ALLOWED
+
+[8] Agent attempts "send_slack_message" (should be DENIED)...
+    Decision: DENIED
+    Reason:   TOOL_NOT_ALLOWED
+
+[9] Audit trail...
+
+    12:35:53 PM | ACTION_DENIED (REVOKED)
+    12:36:02 PM | CAP_ISSUED
+    12:36:02 PM | ACTION_ATTEMPT
+    12:36:02 PM | ACTION_DENIED (TOOL_NOT_ALLOWED)
+    12:36:02 PM | ACTION_ATTEMPT
+    12:36:02 PM | ACTION_DENIED (TOOL_NOT_ALLOWED)
+    12:36:02 PM | ACTION_ATTEMPT
+    12:36:02 PM | ACTION_ALLOWED
+    12:36:02 PM | ACTION_ATTEMPT
+    12:36:02 PM | ACTION_DENIED (TOOL_NOT_ALLOWED)
+
+============================================================
+Scenario 1 Summary: The Runaway Agent
+============================================================
+  ✗ drop_database    DENIED  (blocked category: shell)
+  ✗ terminate_ec2    DENIED  (blocked category: shell)
+  ✓ close_github_issue ALLOWED (in allowed_tools, category: web)
+  ✗ send_slack_message DENIED  (not in allowed_tools)
+
+  The cleanup bot could only use the 3 tools it was given.
+  No database dropped. No servers terminated. No rogue Slack messages.
+  Leash > master key.
+============================================================

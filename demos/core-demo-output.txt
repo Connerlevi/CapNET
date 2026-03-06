@@ -1,0 +1,117 @@
+
+> capnet@0.1.0 demo:clean
+> node -e "const fs=require('fs');const p=require('path');const d='data';if(fs.existsSync(d)){fs.readdirSync(d).filter(f=>f.endsWith('.json')||f.endsWith('.jsonl')).forEach(f=>fs.unlinkSync(p.join(d,f)))}" && echo Data cleared && npm run demo
+
+Data cleared
+
+> capnet@0.1.0 demo
+> npm run demo -w sdk
+
+
+> @capnet/sdk@0.1.0 demo
+> node ../node_modules/tsx/dist/cli.mjs src/demo.ts
+
+============================================================
+CapNet Demo Agent — Capability Lifecycle
+============================================================
+
+[1] Loading agent identity...
+    Generated new agent keypair
+    Agent ID: agent:demo-grocerybot
+    Pubkey: VYIwFY3hhex7H8ADsHUI...
+
+[2] Checking services...
+    Proxy:   ok
+    Sandbox: ok
+
+[3] Wallet issuing capability to agent...
+    Cap ID: cap_1772818552725_6e44469c
+    Budget: $50.00
+    Expires: 3/7/2026, 12:35:52 PM
+    Blocked: alcohol, tobacco, gift_cards
+
+[4] Delegating sub-capability to sub-agent...
+    Sub-agent ID: agent:demo-grocerybot-sub
+    Sub-agent pubkey: YFXcKBNkGIS+ttzq8Dr6...
+    Sub-cap ID: cap_1772818552805_96e14c81
+    Budget: $20.00 (reduced from $50)
+    Blocked: alcohol, tobacco, gift_cards, household
+    Delegation depth: 1
+    Parent: cap_1772818552725_6e44469c
+
+[5] Sub-agent fetching merchant catalog...
+    Vendor: sandboxmart
+    Items: 16
+    Blocked: alcohol, gift_cards, tobacco
+
+[6] Sub-agent building grocery cart (should be ALLOWED)...
+    Cart:
+      - Organic Milk (1 gal) ($5.99)
+      - Whole Wheat Bread ($3.49)
+      - Free Range Eggs (12) ($4.99)
+    Total: $14.47
+    Decision: ALLOW
+    Reason: ALLOWED
+    Order: ord_1772818552975_fe15c20d ✓
+
+[7] Sub-agent attempting to buy alcohol (should be DENIED)...
+    Cart: Red Wine (750ml) ($14.99)
+    Decision: DENY
+    Reason: CATEGORY_BLOCKED:alcohol
+
+[8] Revoking parent capability (cascade to sub-cap)...
+    Revoked parent: cap_1772818552725_6e44469c
+    Sub-cap cap_1772818552805_96e14c81 should now be cascade-revoked
+
+[9] Sub-agent attempting groceries after cascade revoke (should be DENIED)...
+    Decision: DENY
+    Reason: REVOKED
+
+[10] Audit trail (last 15 receipts, oldest first)...
+
+    9:38:46 PM | ACTION_DENIED (CATEGORY_BLOCKED:alcohol)
+    9:38:46 PM | CAP_REVOKED
+    9:38:46 PM | CAP_REVOKED
+    9:38:46 PM | ACTION_ATTEMPT ($14.47)
+    9:38:46 PM | ACTION_DENIED (REVOKED)
+    12:35:52 PM | CAP_ISSUED ($50.00)
+    12:35:52 PM | CAP_DELEGATED ($20.00)
+    12:35:52 PM | ACTION_ATTEMPT ($14.47)
+    12:35:52 PM | ACTION_ALLOWED ($14.47)
+    12:35:52 PM | ACTION_ATTEMPT ($14.99)
+    12:35:52 PM | ACTION_DENIED (CATEGORY_BLOCKED:alcohol)
+    12:35:53 PM | CAP_REVOKED
+    12:35:53 PM | CAP_REVOKED
+    12:35:53 PM | ACTION_ATTEMPT ($14.47)
+    12:35:53 PM | ACTION_DENIED (REVOKED)
+
+============================================================
+Demo Summary
+============================================================
+  ✓ Sub-capability delegated ($20 budget from $50 parent)
+  ✓ Groceries allowed (sub-agent, within budget)
+  ✗ Alcohol denied (blocked category)
+  ✗ Post-cascade-revoke denied (parent revoked → child revoked)
+
+The leash works. Delegation attenuates, revocation cascades.
+============================================================
+
+  What to do next:
+
+  1. Load the Chrome extension (if you haven't already):
+     a. Open Chrome and go to chrome://extensions
+     b. Enable 'Developer mode' (toggle in top-right corner)
+     c. Click 'Load unpacked'
+     d. Select the extension/dist/ folder inside this project
+     e. Pin CapNet to your toolbar (puzzle icon -> pin)
+
+  2. Try the extension UI:
+     - Templates tab: Issue a capability (set budget, blocked categories)
+     - Active tab:    See active caps, click Revoke to test kill switch
+     - Receipts tab:  View the full audit trail from this demo
+
+  3. Run edge-case tests:  See TEST_RUNBOOK.md
+  4. Full tester guide:    See TESTER_GUIDE.md
+
+  NOTE: 'npm run dev' must be running for the extension to work.
+============================================================

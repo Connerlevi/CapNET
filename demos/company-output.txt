@@ -1,0 +1,157 @@
+
+> capnet@0.1.0 demo:company
+> npm run demo:company -w sdk
+
+
+> @capnet/sdk@0.1.0 demo:company
+> node ../node_modules/tsx/dist/cli.mjs src/scenarios/multi-agent-company.ts
+
+
+============================================================
+Scenario 3: The Multi-Agent Company
+============================================================
+
+[1] WITHOUT CapNet — what goes wrong
+
+    Acme Corp gives all three AI agents the same credentials:
+      - Company credit card (no limit)
+      - AWS root access
+      - GitHub admin token
+      - Slack bot token
+
+    What happens:
+      - Sales agent buys $50K in "client gifts" (gift cards for itself)
+      - Finance agent accidentally deploys untested code to production
+      - Engineering agent expenses a $3K dinner "for the team"
+      - Junior intern's agent (delegated by Sales) buys alcohol
+
+    Total chaos: $53K in unauthorized spend, a production outage,
+    and an HR incident. Every agent could do everything.
+
+
+[2] WITH CapNet — checking services...
+    Proxy:   ok
+    Sandbox: ok
+
+[3] Generating agent identities...
+    Sales:       agent:acme-sales
+    Finance:     agent:acme-finance
+    Engineering: agent:acme-engineering
+
+[4] Issuing SPEND capability to Sales ($100)...
+    Cap ID:  cap_1772818608748_1de459c5
+    Budget:  $100.00
+    Blocked: alcohol, tobacco
+
+[5] Issuing SPEND capability to Finance ($500)...
+    Cap ID:  cap_1772818608772_6084d38d
+    Budget:  $500.00
+    Blocked: alcohol, tobacco, gift_cards
+
+[6] Issuing TOOL_CALL capability to Engineering...
+    Cap ID:  cap_1772818608794_546e9651
+    Tools:   deploy_staging, run_tests, read_logs, create_pr
+    Blocked: shell, spawn, device
+
+[7] Sales buys client meeting supplies (should be ALLOWED)...
+    Cart:
+      - 2x Whole Wheat Bread ($3.49 ea)
+      - 1x Greek Yogurt (32oz) ($6.49 ea)
+    Total: $13.47
+    Decision: ALLOWED
+    Reason:   ALLOWED
+    Order: ord_1772818608835_21d599d9 ✓
+
+[8] Engineering deploys to staging (should be ALLOWED)...
+    Decision: ALLOWED
+    Reason:   ALLOWED
+
+[9] Finance tries to deploy code (should be DENIED)...
+    Finance has a SPEND cap, not a TOOL_CALL cap
+    Decision: DENIED
+    Reason:   ACTION_NOT_ALLOWED
+
+[10] Engineering tries to buy supplies (should be DENIED)...
+    Engineering has a TOOL_CALL cap, not a SPEND cap
+    Decision: DENIED
+    Reason:   ACTION_NOT_ALLOWED
+
+[11] Sales delegates to Junior Sales ($30, +gift_cards blocked)...
+    Junior: agent:acme-junior-sales
+    Cap ID:  cap_1772818608886_ed123d66
+    Budget:  $30.00 (from Sales' $100)
+    Blocked: alcohol, tobacco, gift_cards
+    Depth:   1
+
+[12] Junior Sales buys snacks for meeting (should be ALLOWED)...
+    Cart:
+      - 2x Organic Bananas (bunch) ($1.99 ea)
+      - 1x Free Range Eggs (12) ($4.99 ea)
+    Total: $8.97
+    Decision: ALLOWED
+    Reason:   ALLOWED
+    Order: ord_1772818608928_41aa3e88 ✓
+
+[13] Revoking Sales cap (should cascade to Junior)...
+    Revoked: cap_1772818608748_1de459c5 (Sales)
+    Cascade: cap_1772818608886_ed123d66 (Junior Sales)
+
+    Junior Sales tries to buy after cascade revoke...
+    Junior Sales:
+    Decision: DENIED
+    Reason:   REVOKED
+
+    Finance agent should still be active...
+    Finance:
+    Decision: ALLOWED
+    Reason:   ALLOWED
+    Order: ord_1772818608977_49938dd1 ✓
+
+[14] Audit trail...
+
+    12:36:23 PM | ACTION_DENIED (CATEGORY_BLOCKED:gift_cards)
+    12:36:23 PM | ACTION_ATTEMPT ($50.00)
+    12:36:23 PM | ACTION_DENIED (CATEGORY_BLOCKED:gift_cards)
+    12:36:23 PM | ACTION_ATTEMPT ($8.48)
+    12:36:23 PM | ACTION_ALLOWED ($8.48)
+    12:36:48 PM | CAP_ISSUED ($100.00)
+    12:36:48 PM | CAP_ISSUED ($500.00)
+    12:36:48 PM | CAP_ISSUED
+    12:36:48 PM | ACTION_ATTEMPT ($13.47)
+    12:36:48 PM | ACTION_ALLOWED ($13.47)
+    12:36:48 PM | ACTION_ATTEMPT
+    12:36:48 PM | ACTION_ALLOWED
+    12:36:48 PM | ACTION_ATTEMPT
+    12:36:48 PM | ACTION_DENIED (ACTION_NOT_ALLOWED)
+    12:36:48 PM | ACTION_ATTEMPT ($5.99)
+    12:36:48 PM | ACTION_DENIED (ACTION_NOT_ALLOWED)
+    12:36:48 PM | CAP_DELEGATED ($30.00)
+    12:36:48 PM | ACTION_ATTEMPT ($8.97)
+    12:36:48 PM | ACTION_ALLOWED ($8.97)
+    12:36:48 PM | CAP_REVOKED
+    12:36:48 PM | CAP_REVOKED
+    12:36:48 PM | ACTION_ATTEMPT ($5.99)
+    12:36:48 PM | ACTION_DENIED (REVOKED)
+    12:36:48 PM | ACTION_ATTEMPT ($8.99)
+    12:36:48 PM | ACTION_ALLOWED ($8.99)
+
+============================================================
+Scenario 3 Summary: The Multi-Agent Company
+============================================================
+  Role isolation:
+    ✓ Sales buys supplies         ALLOWED  (spend cap, $100)
+    ✓ Engineering deploys staging  ALLOWED  (tool_call cap)
+    ✗ Finance deploys code         DENIED   (has spend cap, not tool_call)
+    ✗ Engineering buys supplies    DENIED   (has tool_call cap, not spend)
+
+  Delegation + attenuation:
+    ✓ Junior Sales buys snacks     ALLOWED  ($30 delegated from Sales)
+    + Junior blocked gift_cards    (attenuated: parent didn't block them)
+
+  Cascade revocation:
+    ✗ Sales revoked → Junior denied DENIED  (cascade revocation)
+    ✓ Finance still works           ALLOWED (independent cap unaffected)
+
+  Every agent could only do its job. No cross-boundary access.
+  Delegation attenuated. Revocation cascaded. Finance was unaffected.
+============================================================

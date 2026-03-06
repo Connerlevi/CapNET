@@ -116,11 +116,14 @@ Why this architecture:
 - Receipts timeline grouped by date
 - Response schema validation (Zod) on all API calls
 
-### Week 6 — Polish + Demo Harness (PARTIAL)
+### Week 6 — Polish + Demo Harness (IN PROGRESS)
 - [x] Human-readable denial reasons
 - [x] One command to run all components (`npm run dev`)
 - [x] Demo script with full lifecycle (`npm run demo:clean`)
 - [x] Post-demo and post-startup next-step guidance
+- [x] Three demo scenarios (Runaway Agent, Agent Hijack, Multi-Agent Company)
+- [x] Shared demo utilities extracted (`demo-utils.ts`)
+- [x] `npm run demo:all` runs all 3 scenarios
 - [ ] "Investor Mode" scripted flow
 - [ ] Conformance tests
 
@@ -133,9 +136,12 @@ Why this architecture:
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/health` | Health check |
-| POST | `/capability/issue` | Issue new capability |
-| POST | `/action/request` | Request action (enforces constraints) |
-| POST | `/capability/revoke` | Revoke capability by ID |
+| POST | `/capability/issue` | Issue spend capability |
+| POST | `/capability/issue/toolcall` | Issue tool_call capability |
+| POST | `/capability/delegate` | Delegate sub-capability with attenuation |
+| POST | `/action/request` | Request spend action (enforces constraints) |
+| POST | `/action/toolcall` | Request tool call action (enforces tool constraints) |
+| POST | `/capability/revoke` | Revoke capability by ID (cascade to children) |
 | GET | `/capabilities` | List all capabilities |
 | GET | `/receipts` | Query receipt log |
 
@@ -187,6 +193,12 @@ Why this architecture:
 - `VENDOR_NOT_ALLOWED` — Vendor not in allowed_vendors
 - `CATEGORY_BLOCKED:<category>` — Item category is blocked
 - `AMOUNT_EXCEEDS_MAX` — Cart total exceeds budget
+- `TOOL_NOT_ALLOWED` — Tool not in allowed_tools list
+- `TOOL_CATEGORY_BLOCKED:<category>` — Tool category is blocked
+- `PARENT_REVOKED` — Parent capability in delegation chain was revoked
+- `PARENT_EXPIRED` — Parent capability in delegation chain expired
+- `DELEGATION_DEPTH_EXCEEDED` — Exceeds max delegation depth
+- `ATTENUATION_VIOLATION` — Child capability attempts to expand parent authority
 
 ---
 

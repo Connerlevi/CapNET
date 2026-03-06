@@ -22,15 +22,22 @@ import {
   generateEd25519Keypair,
   type Keypair,
   type CapDoc,
-  type ActionRequest,
+  fetchJson,
+  logStep,
+  die,
+  checkProxy,
+  checkSandbox,
+  printAuditTrail,
+  pause,
+  PROXY_URL,
+  SANDBOX_URL,
   type ActionResult,
-  type Receipt,
-} from "@capnet/shared";
+  type CatalogResponse,
+  type CartValidateResponse,
+  type CheckoutResponse,
+} from "./demo-utils";
 
-const PROXY_URL = process.env.PROXY_URL || "http://127.0.0.1:3100";
-const SANDBOX_URL = process.env.SANDBOX_URL || "http://127.0.0.1:3200";
 const AGENT_KEY_PATH = path.join(__dirname, "../../data/demo_agent_key.json");
-const TIMEOUT_MS = 2500;
 
 // Demo agent identities
 const AGENT_ID = "agent:demo-grocerybot";
@@ -63,98 +70,6 @@ function loadOrCreateAgentKey(): Keypair {
 }
 
 // ---------------------------------------------------------------------------
-// Fetch with Timeout
-// ---------------------------------------------------------------------------
-
-async function fetchJson<T>(
-  url: string,
-  options?: RequestInit,
-  timeoutMs = TIMEOUT_MS
-): Promise<T> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const res = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-    }
-
-    return (await res.json()) as T;
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timeout after ${timeoutMs}ms: ${url}`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Logging Helpers
-// ---------------------------------------------------------------------------
-
-function logStep(n: number, msg: string) {
-  console.log(`\n[${n}] ${msg}`);
-}
-
-function die(msg: string, hint?: string): never {
-  console.error(`\nERROR: ${msg}`);
-  if (hint) console.error(`HINT: ${hint}`);
-  process.exit(1);
-}
-
-// ---------------------------------------------------------------------------
-// Types from sandbox (matches sandbox/src/index.ts)
-// ---------------------------------------------------------------------------
-
-interface CatalogItem {
-  sku: string;
-  name: string;
-  category: string;
-  price_cents: number;
-  in_stock: boolean;
-}
-
-interface CatalogResponse {
-  vendor: string;
-  items: CatalogItem[];
-  blocked_categories: string[];
-}
-
-interface CartValidateResponse {
-  valid: boolean;
-  vendor: string;
-  items: Array<{
-    sku: string;
-    name: string;
-    category: string;
-    price_cents: number;
-    qty: number;
-  }>;
-  total_cents: number;
-  action_request: ActionRequest;
-}
-
-interface CheckoutResponse {
-  success: boolean;
-  order: {
-    order_id: string;
-    vendor: string;
-    total_cents: number;
-    status: string;
-    created_at: string;
-    receipt_id: string;
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Main Demo
 // ---------------------------------------------------------------------------
 
@@ -179,19 +94,8 @@ async function main() {
 
   // Step 2: Check services are running
   logStep(2, "Checking services...");
-  try {
-    const proxyHealth = await fetchJson<{ status: string }>(`${PROXY_URL}/health`);
-    console.log(`    Proxy: ${proxyHealth.status}`);
-  } catch (err) {
-    die("Proxy not running", "Start with: npm run dev");
-  }
-
-  try {
-    const sandboxHealth = await fetchJson<{ status: string }>(`${SANDBOX_URL}/health`);
-    console.log(`    Sandbox: ${sandboxHealth.status}`);
-  } catch (err) {
-    die("Sandbox not running", "Start with: npm run dev");
-  }
+  await checkProxy();
+  await checkSandbox();
 
   // Step 3: Wallet issues capability to agent
   logStep(3, "Wallet issuing capability to agent...");
@@ -219,6 +123,7 @@ async function main() {
   console.log(`    Budget: $${(capConstraints.max_amount_cents / 100).toFixed(2)}`);
   console.log(`    Expires: ${new Date(cap.expires_at).toLocaleString()}`);
   console.log(`    Blocked: ${capConstraints.blocked_categories.join(", ")}`);
+  await pause(2000);
 
   // Step 4: Delegate sub-capability with reduced budget
   logStep(4, "Delegating sub-capability to sub-agent...");
@@ -253,6 +158,7 @@ async function main() {
   console.log(`    Blocked: ${subCapConstraints.blocked_categories.join(", ")}`);
   console.log(`    Delegation depth: ${subCap.delegation_depth}`);
   console.log(`    Parent: ${subCap.parent_cap_id}`);
+  await pause(2000);
 
   // Step 5: Fetch catalog
   logStep(5, "Sub-agent fetching merchant catalog...");
@@ -319,6 +225,7 @@ async function main() {
     });
     console.log(`    Order: ${order.order.order_id} ✓`);
   }
+  await pause(2000);
 
   // Step 7: Attempt blocked category (alcohol)
   logStep(7, "Sub-agent attempting to buy alcohol (should be DENIED)...");
@@ -345,6 +252,7 @@ async function main() {
   });
   console.log(`    Decision: ${alcoholResult.decision.toUpperCase()}`);
   console.log(`    Reason: ${alcoholResult.reason}`);
+  await pause(2000);
 
   // Step 8: Revoke PARENT capability (should cascade to sub-cap)
   logStep(8, "Revoking parent capability (cascade to sub-cap)...");
@@ -383,26 +291,12 @@ async function main() {
   });
   console.log(`    Decision: ${postRevokeResult.decision.toUpperCase()}`);
   console.log(`    Reason: ${postRevokeResult.reason}`);
+  await pause(2000);
 
   // Step 10: Show audit trail
   logStep(10, "Audit trail (last 15 receipts, oldest first)...");
-  const receipts = await fetchJson<Receipt[]>(`${PROXY_URL}/receipts?limit=15`);
-
-  // Sort by timestamp ascending (oldest first) for consistent ordering
-  const sortedReceipts = [...receipts].sort(
-    (a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()
-  );
-
-  console.log("");
-  for (const r of sortedReceipts) {
-    const time = new Date(r.ts).toLocaleTimeString();
-    const summary = r.summary.denied_reason
-      ? ` (${r.summary.denied_reason})`
-      : r.summary.amount_cents
-        ? ` ($${(r.summary.amount_cents / 100).toFixed(2)})`
-        : "";
-    console.log(`    ${time} | ${r.event}${summary}`);
-  }
+  await printAuditTrail(15);
+  await pause(3000);
 
   // Summary
   console.log("\n" + "=".repeat(60));

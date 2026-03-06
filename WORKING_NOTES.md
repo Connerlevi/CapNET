@@ -4,9 +4,9 @@
 
 ---
 
-## Last Updated: 2026-03-05
+## Last Updated: 2026-03-06
 
-## Current Status: Delegation/Attenuation COMPLETE — Prompt 7 fully done, demo verified with cascade revocation
+## Current Status: Demo Scenarios COMPLETE + VHS recording next
 
 ---
 
@@ -41,7 +41,7 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 | 5 | Sandbox + checkout + agent script | DONE | 17 item catalog, cart validation, checkout, orders API |
 | 6 | Revocation + post-revoke denial | DONE | POST /capability/revoke, persisted, CAP_REVOKED receipts |
 | 7 | Executor binding + attenuation | DONE | Executor binding + full delegation/attenuation with cascade revocation |
-| 8 | Demo polish + investor mode | NOT STARTED | |
+| 8 | Demo polish + investor mode | IN PROGRESS | 3 scenarios done, investor mode pending |
 | 9 | Conformance tests | NOT STARTED | |
 
 ---
@@ -84,13 +84,12 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 
 ### sdk/ (@capnet/sdk)
 - `src/index.ts` — CapNetClient class with all proxy methods, AbortController timeouts, delegateCapability()
-- `src/demo.ts` — Full lifecycle demo: issue → delegate → allow → deny → cascade revoke → deny
-  - Generates/loads real Ed25519 agent keypair (data/demo_agent_key.json)
-  - Generates sub-agent keypair for delegation demo
-  - Delegates with reduced budget ($20 from $50) and additional blocked category
-  - Demonstrates cascade revocation (parent revoke → child denied)
-  - Imports types from @capnet/shared (no drift)
-  - Clear audit trail output (10 steps)
+- `src/demo.ts` — Core lifecycle demo: issue → delegate → allow → deny → cascade revoke → deny (10 steps)
+- `src/demo-utils.ts` — Shared utilities: fetchJson, logging, health checks, types
+- `src/scenarios/runaway-agent.ts` — Scenario 1: Cleanup bot with tool_call enforcement (9 steps)
+- `src/scenarios/agent-hijack.ts` — Scenario 2: Prompt injection vs spend enforcement (9 steps)
+- `src/scenarios/multi-agent-company.ts` — Scenario 3: Role isolation + delegation + cascade (14 steps)
+- `src/scenarios/run-all.ts` — Runs all 3 scenarios sequentially
 
 ### extension/ (@capnet/extension)
 - Chrome MV3 manifest (permissions: storage, host: localhost:3100, 127.0.0.1:3100)
@@ -174,12 +173,17 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 
 ## What's Next
 
-### Priority 1: Demo Polish (Prompt 8) + Three Demo Scenarios
-- Polish existing demo for investor-readiness
-- Build three demo scenarios from capnet_development_alignment.md:
-  1. **Runaway Agent** — Agent with credentials does destructive actions; CapNet blocks them
-  2. **Agent Hijack** — Prompt injection triggers gift card purchase; CapNet denies blocked category
-  3. **Multi-Agent Company** — Multiple agents with scoped capabilities (sales, finance, engineering)
+### Priority 1: Demo Polish (Prompt 8) — IN PROGRESS
+- [x] Three demo scenarios implemented and type-checked:
+  1. **Runaway Agent** — Cleanup bot with tool_call enforcement (allowed tools, blocked categories)
+  2. **Agent Hijack** — Prompt injection vs spend enforcement (category block + budget cap)
+  3. **Multi-Agent Company** — Sales/Finance/Engineering role isolation + delegation + cascade revocation
+- [x] Shared demo utilities extracted (`demo-utils.ts`)
+- [x] `npm run demo:runaway`, `demo:hijack`, `demo:company`, `demo:all` scripts
+- [x] All 3 scenarios verified end-to-end (2026-03-06)
+- [x] `scripts/record-demo.sh` created (asciinema recording helper)
+- [ ] **NEXT: Create VHS .tape files and record demo GIFs** — VHS installed at `/root/go/bin/vhs` (WSL, installed as root). Need to create `.tape` files for each scenario and render to GIF for README embed.
+- [ ] "Investor Mode" scripted flow
 
 ### Priority 2: SDK DX Overhaul
 - Simplify developer onboarding to `import { CapNet } from "capnet"` level
@@ -355,6 +359,34 @@ Only after Tier 1 passes 100%:
   - Demo script: Added delegation step (sub-agent with $20 budget from $50 parent, extra blocked category), cascade revocation demo, updated from 9 to 10 steps
 - **All builds pass**: `npm run build`, proxy type-check, SDK type-check
 - **Demo verified**: `npm run demo:clean` passes all 10 steps — delegation, attenuation enforcement, cascade revocation all working
+
+### 2026-03-06 — Demo scenarios verified, doc fixes, VHS setup, competitive analysis
+- **Verified all demo scenarios end-to-end**: `demo:runaway`, `demo:hijack`, `demo:company`, `demo:all`, `demo:clean` — all pass
+- **Fixed stale docs across 5 files**:
+  - CAPNET_AI_ASSISTANT_PROMPTS.md: Prompt 7 → COMPLETE
+  - PROJECT_STRUCTURE.md: Added delegation endpoints, scenario files, demo commands
+  - CAPNET_BETA_DEV_ROADMAP.md: Added delegation/toolcall endpoints + denial reasons
+  - WORKING_NOTES.md: Updated status, SDK section, priorities
+  - Claude memory files updated
+- **Competitive analysis**: Reviewed Zenity ($series A, Gartner Cool Vendor) and Noma Security ($132M raised). Conclusion: complementary not competitive. They do observability + detection (security camera). CapNet does authorization primitive (locked door). Different layers.
+- **Reviewed CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md** (2 review passes):
+  - First review: Identified `Set<string>` serialization bug, missing Proof-of-Claim context, timeline conflicts, latency concern
+  - Second review (after user updates): New sections 1.5 (NL Engine) and 1.6 (Agent-Agnostic Positioning) are solid. Architecture diagram fixed. OpenClaw tension addressed. Model ID updated. All previous issues resolved.
+  - Confirmed: Behavioral intelligence is FUTURE roadmap, does NOT override Phase 0/1 priorities
+- **VHS installed** at `/root/go/bin/vhs` (WSL, as root). `scripts/record-demo.sh` created (asciinema helper).
+- **Next step**: Create VHS `.tape` files for demo recordings → render to GIF → embed in README
+
+### 2026-03-05 — Demo scenarios + doc fixes
+- **Three demo scenarios implemented**: Runaway Agent (tool_call), Agent Hijack (spend), Multi-Agent Company (role isolation + delegation + cascade)
+- **Extracted demo-utils.ts**: Shared fetchJson, logging, health checks, types across all scenarios
+- **run-all.ts**: Sequential runner for all 3 scenarios
+- **Package scripts**: `demo:runaway`, `demo:hijack`, `demo:company`, `demo:all` added
+- **Fixed stale docs**:
+  - CAPNET_AI_ASSISTANT_PROMPTS.md: Prompt 7 status corrected to COMPLETE
+  - PROJECT_STRUCTURE.md: Added delegation endpoints, scenario files, demo commands
+  - CAPNET_BETA_DEV_ROADMAP.md: Added delegation/toolcall endpoints and denial reasons
+  - WORKING_NOTES.md: Updated status, SDK section, priorities
+- **All SDK type-checks pass**: `npx tsc --noEmit -p sdk/tsconfig.json`
 
 ### 2026-02-18 — Doc audit, bug fixes, investor doc, initial commit
 - **Reinstalled node_modules from WSL** (fixed esbuild platform mismatch from Windows install)
