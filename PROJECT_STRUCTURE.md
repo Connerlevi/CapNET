@@ -1,6 +1,6 @@
 # CapNet Project Structure
 
-> Updated: 2026-03-05 | Status: Phase 0 Complete + Demo Scenarios
+> Updated: 2026-03-07 | Status: Phase 0 FULLY COMPLETE (Prompts 1-9)
 
 ```
 CapNET/
@@ -78,9 +78,34 @@ CapNET/
 │   │       └── popup.css        # Styles with dark mode, CSS variables
 │   └── dist/                    # Build output (gitignored)
 │
+├── tests/                       # Conformance tests (vitest)
+│   └── conformance.test.ts      # 15 integration tests against live proxy/sandbox
+│
+├── demos/                       # Demo recordings and text output
+│   ├── capnet-quickstart.mp4    # 60-second overview
+│   ├── capnet-core-demo.mp4     # Core lifecycle demo
+│   ├── capnet-runaway-agent.mp4 # Scenario 1: Runaway Agent
+│   ├── capnet-agent-hijack.mp4  # Scenario 2: Agent Hijack
+│   ├── capnet-multi-agent.mp4   # Scenario 3: Multi-Agent Company
+│   ├── *.txt                    # Text output captures
+│   └── README.md                # Demo index
+│
+├── scripts/                     # Recording and utility scripts
+│   ├── vhs-tapes/               # VHS tape files for MP4 generation
+│   │   ├── quickstart.tape
+│   │   ├── demo-core.tape
+│   │   ├── demo-runaway.tape
+│   │   ├── demo-hijack.tape
+│   │   └── demo-company.tape
+│   ├── record-demo.sh           # Asciinema recording helper
+│   └── record-demos.sh          # Batch recording script
+│
+├── vitest.config.ts             # Test configuration
 ├── CAPNET_CONTEXT.md            # Vision, thesis, design principles
-├── CAPNET_AI_ASSISTANT_PROMPTS.md # Build prompts (Prompt 1-9)
-├── CAPNET_BETA_DEV_ROADMAP.md   # 6-week roadmap
+├── CAPNET_AI_ASSISTANT_PROMPTS.md # Build prompts (Prompt 1-9, all complete)
+├── CAPNET_BETA_DEV_ROADMAP.md   # 6-week roadmap (complete)
+├── CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md # Future roadmap (not Phase 0/1)
+├── capnet_development_alignment.md # Development alignment + demo strategy
 ├── WORKING_NOTES.md             # Session continuity, status tracking
 ├── PROJECT_STRUCTURE.md         # This file
 ├── README.md                    # Quick start guide
@@ -180,6 +205,9 @@ npm run demo:clean
 # Build shared + extension
 npm run build
 # Then load extension/dist/ as unpacked extension in Chrome
+
+# Run conformance tests (proxy + sandbox must be running)
+npm test
 
 # Type-check all workspaces
 npm run typecheck

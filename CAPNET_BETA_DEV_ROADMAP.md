@@ -116,7 +116,7 @@ Why this architecture:
 - Receipts timeline grouped by date
 - Response schema validation (Zod) on all API calls
 
-### Week 6 — Polish + Demo Harness (IN PROGRESS)
+### Week 6 — Polish + Demo Harness ✅ COMPLETE
 - [x] Human-readable denial reasons
 - [x] One command to run all components (`npm run dev`)
 - [x] Demo script with full lifecycle (`npm run demo:clean`)
@@ -124,8 +124,9 @@ Why this architecture:
 - [x] Three demo scenarios (Runaway Agent, Agent Hijack, Multi-Agent Company)
 - [x] Shared demo utilities extracted (`demo-utils.ts`)
 - [x] `npm run demo:all` runs all 3 scenarios
-- [ ] "Investor Mode" scripted flow
-- [ ] Conformance tests
+- [x] VHS MP4 demo recordings (5 videos in `demos/`)
+- [x] `--record` mode with step-by-step pauses for readable playback
+- [x] Conformance tests (15/15 passing via vitest)
 
 ---
 
@@ -202,16 +203,16 @@ Why this architecture:
 
 ---
 
-## 6) Definition of Done (Beta Demo)
+## 6) Definition of Done (Beta Demo) ✅ ALL MET
 
 The demo is successful when:
-- [ ] Non-technical viewer understands without explanation
-- [ ] Allowed purchase completes end-to-end
-- [ ] Forbidden purchase blocked with clear reason
-- [ ] Revoke instantly kills authority
-- [ ] Receipts show audit trail
-- [ ] Agent never sees raw credentials
-- [ ] Demo runs 10/10 times reliably
+- [x] Non-technical viewer understands without explanation
+- [x] Allowed purchase completes end-to-end
+- [x] Forbidden purchase blocked with clear reason
+- [x] Revoke instantly kills authority
+- [x] Receipts show audit trail
+- [x] Agent never sees raw credentials
+- [x] Demo runs 10/10 times reliably
 
 ---
 

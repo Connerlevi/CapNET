@@ -357,6 +357,22 @@ Only after Tier 1 passes 100%:
 - **All builds pass**: `npm run build`, proxy type-check, SDK type-check
 - **Demo verified**: `npm run demo:clean` passes all 10 steps — delegation, attenuation enforcement, cascade revocation all working
 
+### 2026-03-07 — Phase 0 COMPLETE: VHS recordings + conformance tests
+- **VHS MP4 recordings generated**: Fixed Chrome/Chromium setup (removed broken snap, installed Chrome via apt). All 5 tape files now produce MP4 demos in `demos/`:
+  - `capnet-quickstart.mp4` (753 KB)
+  - `capnet-core-demo.mp4` (865 KB)
+  - `capnet-runaway-agent.mp4` (806 KB)
+  - `capnet-agent-hijack.mp4` (1.2 MB)
+  - `capnet-multi-agent.mp4` (1.9 MB)
+- **`--record` mode**: Added `pause()` helper to `demo-utils.ts` that inserts step-by-step delays when `--record` flag is passed. Demo scripts run at full speed normally, but pause between steps for readable video recordings.
+- **Conformance tests (Prompt 9)**: 15/15 passing via vitest:
+  - Spend enforcement: accept allowed, reject blocked category, reject over budget, reject wrong executor, reject after revocation
+  - Tool call enforcement: accept allowed tool, reject unlisted tool, reject blocked category
+  - Delegation: reject expanded budget, reject removed block, reject new vendor, accept valid attenuation, cascade revocation
+  - Receipts: verify receipt_id matches for allowed and denied actions
+- **All project docs updated**: README, PROJECT_STRUCTURE, CAPNET_CONTEXT, CAPNET_BETA_DEV_ROADMAP, CAPNET_AI_ASSISTANT_PROMPTS, WORKING_NOTES — all reflect Phase 0 complete status
+- **Prompts 8 and 9 marked COMPLETE**. All 9 Phase 0 prompts done.
+
 ### 2026-03-06 — Demo scenarios verified, doc fixes, VHS setup, competitive analysis
 - **Verified all demo scenarios end-to-end**: `demo:runaway`, `demo:hijack`, `demo:company`, `demo:all`, `demo:clean` — all pass
 - **Fixed stale docs across 5 files**:

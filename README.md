@@ -251,6 +251,10 @@ await capnet.requestAction({
 | Audit trail (receipts) | Working |
 | Chrome extension wallet UI | Working |
 | Demo scenarios (3 stories) | Working |
+| MP4 demo recordings (5 videos) | Working |
+| Conformance tests (15/15) | Working |
+
+**All 9 Phase 0 build prompts complete.**
 
 **Next:**
 
@@ -288,6 +292,7 @@ npm run demo:hijack   # Scenario: Agent Hijack
 npm run demo:company  # Scenario: Multi-Agent Company
 npm run demo:all      # Run all 3 scenarios
 npm run demo:clean    # Clear data + run demo
+npm test              # Run conformance tests (15 tests)
 npm run build         # Build shared + extension
 npm run typecheck     # Typecheck all packages
 ```

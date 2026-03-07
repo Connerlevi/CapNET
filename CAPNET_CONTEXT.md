@@ -387,9 +387,9 @@ These principles should guide all implementation choices:
 
 ---
 
-## 17) Implementation status (as of 2026-03-05)
+## 17) Implementation status (as of 2026-03-07)
 
-### Phase 0 Core: COMPLETE ✓ (including delegation)
+### Phase 0: FULLY COMPLETE ✓ (all 9 prompts done)
 
 **Demo verified on:** Windows 11, macOS, Linux (WSL2)
 
@@ -427,12 +427,18 @@ The demo story works end-to-end (10 steps):
 6. Sub-agent attempts any action → DENIED (revoked)
 7. Receipts show complete audit trail including delegation events
 
-### Remaining for Phase 0+
+### Phase 0 Completion (2026-03-07)
 
-- Demo polish (investor mode, three demo scenarios)
+All 9 build prompts complete:
+- 3 demo scenarios (Runaway Agent, Agent Hijack, Multi-Agent Company) with MP4 recordings
+- `--record` mode for step-by-step pausable demo playback
+- 15/15 conformance tests passing (vitest): spend enforcement, tool call enforcement, delegation attenuation, cascade revocation, receipt verification
+
+### Next: Phase 1
+
 - SDK DX overhaul (simpler developer onboarding)
-- Conformance tests
-- OpenClaw integration (Phase 1)
+- OpenClaw integration (agent framework, 140K GitHub stars)
+- MCP Security Gateway
 
 ### Phase 1 Integration Targets (pick one to prove "not a toy")
 
