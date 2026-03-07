@@ -6,7 +6,7 @@
 
 ## Last Updated: 2026-03-06
 
-## Current Status: Demo Scenarios COMPLETE + VHS recording next
+## Current Status: Phase 0 COMPLETE (Prompts 1-9 all done)
 
 ---
 
@@ -41,8 +41,8 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 | 5 | Sandbox + checkout + agent script | DONE | 17 item catalog, cart validation, checkout, orders API |
 | 6 | Revocation + post-revoke denial | DONE | POST /capability/revoke, persisted, CAP_REVOKED receipts |
 | 7 | Executor binding + attenuation | DONE | Executor binding + full delegation/attenuation with cascade revocation |
-| 8 | Demo polish + investor mode | IN PROGRESS | 3 scenarios done, investor mode pending |
-| 9 | Conformance tests | NOT STARTED | |
+| 8 | Demo polish + investor mode | DONE | 3 scenarios, VHS MP4 recordings, --record mode |
+| 9 | Conformance tests | DONE | 15/15 tests passing (vitest) |
 
 ---
 
@@ -173,17 +173,14 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 
 ## What's Next
 
-### Priority 1: Demo Polish (Prompt 8) — IN PROGRESS
-- [x] Three demo scenarios implemented and type-checked:
-  1. **Runaway Agent** — Cleanup bot with tool_call enforcement (allowed tools, blocked categories)
-  2. **Agent Hijack** — Prompt injection vs spend enforcement (category block + budget cap)
-  3. **Multi-Agent Company** — Sales/Finance/Engineering role isolation + delegation + cascade revocation
+### Priority 1: Demo Polish (Prompt 8) — COMPLETE
+- [x] Three demo scenarios implemented and type-checked
 - [x] Shared demo utilities extracted (`demo-utils.ts`)
 - [x] `npm run demo:runaway`, `demo:hijack`, `demo:company`, `demo:all` scripts
-- [x] All 3 scenarios verified end-to-end (2026-03-06)
-- [x] `scripts/record-demo.sh` created (asciinema recording helper)
-- [ ] **NEXT: Create VHS .tape files and record demo GIFs** — VHS installed at `/root/go/bin/vhs` (WSL, installed as root). Need to create `.tape` files for each scenario and render to GIF for README embed.
-- [ ] "Investor Mode" scripted flow
+- [x] All 3 scenarios verified end-to-end
+- [x] VHS MP4 recordings generated (5 tapes in `scripts/vhs-tapes/`, MP4s in `demos/`)
+- [x] `--record` mode adds step-by-step pauses for readable playback
+- [x] Conformance tests: 15/15 passing (`npm test`)
 
 ### Priority 2: SDK DX Overhaul
 - Simplify developer onboarding to `import { CapNet } from "capnet"` level

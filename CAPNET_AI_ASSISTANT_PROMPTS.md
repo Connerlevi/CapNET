@@ -17,8 +17,8 @@
 | 5 | Merchant sandbox + checkout | ✅ COMPLETE |
 | 6 | Revocation + post-revoke denial | ✅ COMPLETE |
 | 7 | Executor binding + attenuation | ✅ COMPLETE |
-| 8 | Demo polish + investor mode | IN PROGRESS |
-| 9 | Conformance tests | PENDING |
+| 8 | Demo polish + investor mode | ✅ COMPLETE |
+| 9 | Conformance tests | ✅ COMPLETE |
 
 ---
 
@@ -145,10 +145,10 @@ Add:
   - Receipts show delegation chain
 
 **Acceptance criteria**
-- [ ] Wrong agent pubkey fails with `EXECUTOR_MISMATCH`
-- [ ] Derived capability is strictly smaller (budget, expiry)
-- [ ] Cannot expand scope in derived capability
-- [ ] Receipts show parent_cap_id for delegated actions
+- [x] Wrong agent pubkey fails with `EXECUTOR_MISMATCH`
+- [x] Derived capability is strictly smaller (budget, expiry)
+- [x] Cannot expand scope in derived capability
+- [x] Receipts show parent_cap_id for delegated actions
 
 ---
 
@@ -162,10 +162,10 @@ Add:
 - Clear console output showing enforcement decisions
 
 **Acceptance criteria**
-- [ ] Demo runs 10/10 times reliably
-- [ ] Receipts and logs are legible to non-technical viewers
-- [ ] All denial reasons are plain English
-- [ ] Single command starts everything
+- [x] Demo runs 10/10 times reliably
+- [x] Receipts and logs are legible to non-technical viewers
+- [x] All denial reasons are plain English
+- [x] Single command starts everything
 
 ---
 
@@ -181,9 +181,9 @@ Add automated tests:
 - Verify receipts match ActionResults
 
 **Acceptance criteria**
-- [ ] Tests pass locally
-- [ ] Tests can run in CI
-- [ ] Failures have clear diagnostics
+- [x] Tests pass locally (15/15)
+- [x] Tests can run in CI (vitest + npm test)
+- [x] Failures have clear diagnostics
 
 ---
 

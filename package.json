@@ -28,10 +28,13 @@
     "build:shared": "npm run build -w shared",
     "build:extension": "npm run build -w extension",
     "typecheck": "tsc --noEmit -p proxy/tsconfig.json && tsc --noEmit -p sandbox/tsconfig.json && tsc --noEmit -p sdk/tsconfig.json",
-    "typecheck:all": "npm run typecheck && npm run build:extension"
+    "typecheck:all": "npm run typecheck && npm run build:extension",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^2.1.9"
   }
 }
