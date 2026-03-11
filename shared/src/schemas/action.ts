@@ -139,6 +139,8 @@ export const ToolCategorySchema = z.enum([
   "filesystem",  // file read/write/delete
   "spawn",       // sub-agent spawning, session management
   "device",      // camera, location, contacts, screen
+  "git",         // GitHub, GitLab, version control operations
+  "database",    // SQL queries, table operations
   "other",       // uncategorized tools
 ]);
 

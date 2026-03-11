@@ -12,7 +12,8 @@
     "sandbox",
     "sdk",
     "extension",
-    "openclaw-plugin"
+    "openclaw-plugin",
+    "mcp-gateway"
   ],
   "scripts": {
     "dev": "concurrently -n proxy,sandbox -c blue,green \"npm run dev -w proxy\" \"npm run dev -w sandbox\"",
@@ -22,12 +23,14 @@
     "demo:hijack": "npm run demo:hijack -w sdk",
     "demo:company": "npm run demo:company -w sdk",
     "demo:all": "npm run demo:all -w sdk",
+    "demo:openclaw": "npm run demo:openclaw -w sdk",
+    "demo:github": "npm run demo:github -w sdk",
     "demo:clean": "node -e \"const fs=require('fs');const p=require('path');const d='data';if(fs.existsSync(d)){fs.readdirSync(d).filter(f=>f.endsWith('.json')||f.endsWith('.jsonl')).forEach(f=>fs.unlinkSync(p.join(d,f)))}\" && echo Data cleared && npm run demo",
     "demo:full": "npm run demo:clean && npm run demo",
     "build": "npm run build:shared && npm run build:extension",
     "build:shared": "npm run build -w shared",
     "build:extension": "npm run build -w extension",
-    "typecheck": "tsc --noEmit -p proxy/tsconfig.json && tsc --noEmit -p sandbox/tsconfig.json && tsc --noEmit -p sdk/tsconfig.json",
+    "typecheck": "tsc --noEmit -p proxy/tsconfig.json && tsc --noEmit -p sandbox/tsconfig.json && tsc --noEmit -p sdk/tsconfig.json && tsc --noEmit -p openclaw-plugin/tsconfig.json && tsc --noEmit -p mcp-gateway/tsconfig.json",
     "typecheck:all": "npm run typecheck && npm run build:extension",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -1,0 +1,19 @@
+{
+  "name": "@capnet/mcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ../node_modules/tsx/dist/cli.mjs src/index.ts"
+  },
+  "dependencies": {
+    "@capnet/shared": "*",
+    "@capnet/sdk": "*",
+    "@modelcontextprotocol/sdk": "^1.27.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

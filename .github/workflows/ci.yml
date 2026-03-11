@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npm run typecheck
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - run: npx vitest run tests/sdk/parsers.test.ts tests/sdk/errors.test.ts tests/sdk/keys.test.ts tests/openclaw/enforcer.test.ts tests/openclaw/plugin.test.ts
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build:shared
+      - name: Start proxy and sandbox
+        run: npm run dev &
+      - name: Wait for services
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://127.0.0.1:3100/health && curl -s http://127.0.0.1:3200/health && break
+            sleep 1
+          done
+      - run: npm test
