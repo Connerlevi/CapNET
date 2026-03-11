@@ -18,6 +18,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:shared
+      - run: npx tsc -p sdk/tsconfig.json
       - run: npm run typecheck
 
   unit-tests:
@@ -31,7 +32,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:shared
-      - run: npx vitest run tests/sdk/parsers.test.ts tests/sdk/errors.test.ts tests/sdk/keys.test.ts tests/openclaw/enforcer.test.ts tests/openclaw/plugin.test.ts
+      - run: npx tsc -p sdk/tsconfig.json
+      - run: npx vitest run tests/sdk/parsers.test.ts tests/sdk/errors.test.ts tests/sdk/keys.test.ts tests/openclaw/enforcer.test.ts tests/openclaw/plugin.test.ts tests/mcp-gateway/types.test.ts tests/mcp-gateway/enforcer.test.ts
 
   integration-tests:
     name: Integration Tests
@@ -44,6 +46,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:shared
+      - run: npx tsc -p sdk/tsconfig.json
       - name: Start proxy and sandbox
         run: npm run dev &
       - name: Wait for services
