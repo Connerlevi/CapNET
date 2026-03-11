@@ -72,8 +72,9 @@ export function register(api: OpenClawPluginApi): void {
       `[capnet] DENY ${toolName} reason=${result.reason} (${result.latencyMs}ms)`
     );
 
+    const errorInfo = result.errorType ? ` [${result.errorType}]` : "";
     return {
-      blocked: `[CapNet] Tool call "${toolName}" denied: ${formatDenyReason(result.reason)}`,
+      blocked: `[CapNet] Tool call "${toolName}" denied: ${formatDenyReason(result.reason)}${errorInfo}`,
     };
   }, { priority: 1000 }); // High priority — run before other hooks
 

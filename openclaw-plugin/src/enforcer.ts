@@ -2,19 +2,21 @@
  * CapNet OpenClaw Plugin — Enforcer
  *
  * Wraps the CapNet SDK to enforce tool call capabilities.
- * Handles proxy communication, fail policy, and request construction.
+ * Handles proxy communication, fail policy, auto-identity, and request construction.
  */
 
 import crypto from "crypto";
 import type { ToolCallRequest } from "@capnet/shared";
-import { CapNetClient } from "@capnet/sdk";
+import { CapNetClient, loadOrCreateKeypair, classifyDenialError } from "@capnet/sdk";
+import type { DeniedError } from "@capnet/sdk";
 import { getToolCategory } from "./types.js";
 import type { CapNetPluginConfig } from "./types.js";
 
 export interface EnforcementResult {
   allowed: boolean;
   reason: string;
-  receiptId?: string;
+  errorType?: string | undefined;
+  receiptId?: string | undefined;
   latencyMs: number;
 }
 
@@ -25,6 +27,8 @@ export class CapNetEnforcer {
   private failPolicy: "closed" | "open";
   private gatedTools: Set<string> | null; // null = gate all
   private exemptTools: Set<string>;
+  private keysDir: string | undefined;
+  private identityReady: Promise<void> | undefined;
 
   constructor(config: CapNetPluginConfig) {
     this.client = new CapNetClient({
@@ -37,6 +41,25 @@ export class CapNetEnforcer {
     this.failPolicy = config.failPolicy ?? "closed";
     this.gatedTools = config.gatedTools ? new Set(config.gatedTools) : null;
     this.exemptTools = new Set(config.exemptTools ?? []);
+    this.keysDir = config.keysDir;
+
+    // If no pubkey provided, lazily resolve via auto-identity
+    if (!this.agentPubkey) {
+      this.identityReady = this.resolveIdentity();
+    }
+  }
+
+  private async resolveIdentity(): Promise<void> {
+    const keypair = await loadOrCreateKeypair(this.agentId, this.keysDir);
+    this.agentPubkey = keypair.publicKeyB64;
+  }
+
+  /** Ensure identity is resolved before enforcement */
+  async ensureReady(): Promise<void> {
+    if (this.identityReady) {
+      await this.identityReady;
+      this.identityReady = undefined;
+    }
   }
 
   /** Check if a tool should be gated through CapNet */
@@ -48,6 +71,7 @@ export class CapNetEnforcer {
 
   /** Enforce a tool call through the CapNet proxy */
   async enforce(toolName: string, toolInput: Record<string, unknown>): Promise<EnforcementResult> {
+    await this.ensureReady();
     const start = Date.now();
 
     const request: ToolCallRequest = {
@@ -65,9 +89,27 @@ export class CapNetEnforcer {
       // Submit to proxy's tool_call enforcement endpoint
       const result = await this.client.submitToolCall(request);
 
+      if (result.decision === "allow") {
+        return {
+          allowed: true,
+          reason: result.reason,
+          receiptId: result.receipt_id,
+          latencyMs: Date.now() - start,
+        };
+      }
+
+      // Denied — classify the error for structured handling
+      let typedError: DeniedError | undefined;
+      try {
+        typedError = classifyDenialError(result, { tool: toolName });
+      } catch {
+        // classification is best-effort
+      }
+
       return {
-        allowed: result.decision === "allow",
+        allowed: false,
         reason: result.reason,
+        errorType: typedError?.name,
         receiptId: result.receipt_id,
         latencyMs: Date.now() - start,
       };
@@ -87,6 +129,7 @@ export class CapNetEnforcer {
       return {
         allowed: false,
         reason: "PROXY_UNREACHABLE",
+        errorType: "CapNetError",
         latencyMs,
       };
     }

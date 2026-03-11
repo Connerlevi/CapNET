@@ -18,6 +18,8 @@ export interface CapNetPluginConfig {
   timeoutMs?: number;
   gatedTools?: string[];
   exemptTools?: string[];
+  /** Directory for auto-generated keypairs (default: ~/.capnet/keys) */
+  keysDir?: string;
 }
 
 // -----------------------------------------------------------------------------
