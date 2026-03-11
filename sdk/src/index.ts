@@ -228,3 +228,33 @@ export class CapNetClient {
 
 // Re-export types for convenience
 export type { CapDoc, ActionRequest, ActionResult, ToolCallRequest, Receipt } from "@capnet/shared";
+
+// ---------------------------------------------------------------------------
+// High-level SDK (Phase 1: SDK DX Overhaul)
+// ---------------------------------------------------------------------------
+export { CapNet, AgentBuilder } from "./capnet.js";
+export { CapabilityHandle } from "./handle.js";
+export { protect } from "./protect.js";
+export type { ProtectOptions } from "./protect.js";
+export {
+  CapNetError,
+  DeniedError,
+  CategoryBlockedError,
+  BudgetExceededError,
+  RevokedCapabilityError,
+  ToolNotAllowedError,
+  ExecutorMismatchError,
+  ExpiredCapabilityError,
+  classifyDenialError,
+} from "./errors.js";
+export { parseBudget, parseDuration, durationToExpiry } from "./parsers.js";
+export type { ParsedBudget } from "./parsers.js";
+export type {
+  CapNetOptions,
+  AgentIdentityOptions,
+  SpendOptions,
+  ToolCallOptions,
+  DelegateOptions,
+} from "./types.js";
+export { SpendCapabilityBuilder, ToolCallCapabilityBuilder } from "./builders.js";
+export { loadOrCreateKeypair } from "./keys.js";
