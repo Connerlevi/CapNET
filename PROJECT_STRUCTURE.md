@@ -1,6 +1,6 @@
 # CapNet Project Structure
 
-> Updated: 2026-03-07 | Status: Phase 0 FULLY COMPLETE (Prompts 1-9)
+> Updated: 2026-03-10 | Status: Phase 1 IN PROGRESS (SDK DX + OpenClaw + MCP Gateway complete, CI pipeline live)
 
 ```
 CapNET/
@@ -46,14 +46,43 @@ CapNET/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── src/
-│       ├── index.ts             # CapNetClient class with all proxy methods
+│       ├── index.ts             # CapNetClient class + high-level SDK re-exports
+│       ├── capnet.ts            # CapNet.create() entry point + AgentBuilder
+│       ├── handle.ts            # CapabilityHandle (purchase, execute, delegate, revoke)
+│       ├── builders.ts          # SpendCapabilityBuilder, ToolCallCapabilityBuilder
+│       ├── errors.ts            # Typed error hierarchy (DeniedError, CategoryBlockedError, etc.)
+│       ├── parsers.ts           # parseBudget(), parseDuration(), durationToExpiry()
+│       ├── keys.ts              # loadOrCreateKeypair() — filesystem keypair persistence
+│       ├── types.ts             # Shared interfaces (CapNetOptions, SpendOptions, etc.)
+│       ├── protect.ts           # protect() — ES Proxy tool call interception
+│       ├── smoke-test.ts        # Manual smoke test for builder API
 │       ├── demo.ts              # Core lifecycle demo (issue → delegate → allow → deny → revoke)
 │       ├── demo-utils.ts        # Shared utilities for demo scripts
 │       └── scenarios/
 │           ├── runaway-agent.ts      # Scenario 1: Cleanup bot with tool_call enforcement
 │           ├── agent-hijack.ts       # Scenario 2: Prompt injection with spend enforcement
 │           ├── multi-agent-company.ts # Scenario 3: Role isolation + delegation + cascade
-│           └── run-all.ts            # Runs all 3 scenarios sequentially
+│           ├── openclaw-hijack.ts    # Scenario 4: Malicious OpenClaw skill neutralized
+│           └── run-all.ts            # Runs all 4 scenarios sequentially
+│
+├── openclaw-plugin/             # @capnet/openclaw-plugin — OpenClaw enforcement plugin
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── openclaw.plugin.json     # Plugin manifest with config schema
+│   └── src/
+│       ├── types.ts             # Config interface, OpenClaw API surface, tool category map
+│       ├── enforcer.ts          # CapNetEnforcer — proxy communication, auto-identity, fail policy
+│       └── index.ts             # Plugin registration: hooks, HTTP route, deny formatting
+│
+├── mcp-gateway/                 # @capnet/mcp-gateway — MCP policy enforcement gateway
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       ├── types.ts             # GatewayConfig, UpstreamServer, GatewayTool, classifyTool()
+│       ├── upstream.ts          # UpstreamManager — connects to MCP servers, discovers/forwards tools
+│       ├── enforcer.ts          # GatewayEnforcer — validates tool calls against CapNet proxy
+│       ├── gateway.ts           # CapNetMcpGateway — MCP server wrapping upstreams with enforcement
+│       └── index.ts             # CLI entry point + public API exports
 │
 ├── extension/                   # @capnet/extension — Chrome MV3 wallet UI
 │   ├── package.json
@@ -78,8 +107,26 @@ CapNET/
 │   │       └── popup.css        # Styles with dark mode, CSS variables
 │   └── dist/                    # Build output (gitignored)
 │
-├── tests/                       # Conformance tests (vitest)
-│   └── conformance.test.ts      # 15 integration tests against live proxy/sandbox
+├── tests/                       # Tests (vitest)
+│   ├── conformance.test.ts      # 15 integration tests against live proxy/sandbox
+│   ├── sdk/
+│   │   ├── parsers.test.ts      # 18 unit tests: budget/duration parsing
+│   │   ├── errors.test.ts       # 14 unit tests: error classification, instanceof chains
+│   │   ├── keys.test.ts         # 4 unit tests: keypair persistence/loading
+│   │   └── builder.test.ts      # 10 integration tests: full builder lifecycle
+│   ├── openclaw/
+│   │   ├── harness.ts           # MockOpenClawRuntime — simulates plugin API for testing
+│   │   ├── enforcer.test.ts     # 15 unit tests: gating logic, category mapping, fail policy
+│   │   ├── plugin.test.ts       # 10 unit tests: hook registration, status endpoint, config
+│   │   └── integration.test.ts  # 8 integration tests: full lifecycle with proxy
+│   └── mcp-gateway/
+│       ├── types.test.ts        # 9 unit tests: tool classification across all categories
+│       ├── enforcer.test.ts     # 5 unit tests: fail policy, latency, proxy check
+│       └── gateway.test.ts      # 5 integration tests: full lifecycle with real MCP server
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # CI pipeline: typecheck, unit tests, integration tests
 │
 ├── demos/                       # Demo recordings and text output
 │   ├── capnet-quickstart.mp4    # 60-second overview
@@ -128,6 +175,8 @@ CapNET/
 | `proxy/` | `@capnet/proxy` | 3100 | Enforcement boundary, capability issuance, receipts |
 | `sandbox/` | `@capnet/sandbox` | 3200 | Merchant simulator with catalog and checkout |
 | `sdk/` | `@capnet/sdk` | — | Client library for agents to interact with proxy |
+| `openclaw-plugin/` | `@capnet/openclaw-plugin` | — | OpenClaw enforcement plugin (auto-identity, typed errors) |
+| `mcp-gateway/` | `@capnet/mcp-gateway` | — | MCP policy enforcement gateway (wraps MCP servers with CapNet) |
 | `extension/` | `@capnet/extension` | — | Chrome MV3 wallet UI |
 
 ---
@@ -197,7 +246,8 @@ npm run demo
 npm run demo:runaway    # Scenario 1: Runaway Agent (tool_call enforcement)
 npm run demo:hijack     # Scenario 2: Agent Hijack (spend enforcement)
 npm run demo:company    # Scenario 3: Multi-Agent Company (role isolation)
-npm run demo:all        # Run all 3 scenarios
+npm run demo:openclaw   # Scenario 4: OpenClaw Hijack (malicious skill neutralized)
+npm run demo:all        # Run all 4 scenarios
 
 # Clear data and run demo (fresh start)
 npm run demo:clean
@@ -206,10 +256,13 @@ npm run demo:clean
 npm run build
 # Then load extension/dist/ as unpacked extension in Chrome
 
-# Run conformance tests (proxy + sandbox must be running)
+# Run all tests — 113 tests (proxy + sandbox must be running for integration tests)
 npm test
 
-# Type-check all workspaces
+# Run SDK smoke test (proxy + sandbox must be running)
+npx tsx sdk/src/smoke-test.ts
+
+# Type-check all workspaces (proxy, sandbox, sdk, openclaw-plugin, mcp-gateway)
 npm run typecheck
 
 # Type-check all + build extension
@@ -228,21 +281,29 @@ npm run typecheck:all
 │   (Chrome MV3)  │────▶│  (port 3100)    │────▶│  (port 3200)    │
 │                 │     │  Enforcement    │     │  Merchant Sim   │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                       │
-        │                       ▼
-        │               ┌─────────────────┐
-        │               │     data/       │
-        │               │  caps.json      │
-        │               │  receipts.jsonl │
-        │               │  revoked.json   │
-        │               │  issuer_keys    │
-        │               └─────────────────┘
-        │
-        ▼
-┌─────────────────┐
-│      SDK        │
+        │                    ▲    │
+        │                    │    ▼
+        │                    │  ┌─────────────────┐
+        │                    │  │     data/       │
+        │                    │  │  caps.json      │
+        │                    │  │  receipts.jsonl │
+        │                    │  │  revoked.json   │
+        │                    │  └─────────────────┘
+        │                    │
+        ▼                    │
+┌─────────────────┐          │
+│      SDK        │──────────┘
 │  (Agent lib)    │
 └─────────────────┘
+                             │
+┌─────────────────────────────────────────────┐
+│  MCP Gateway                                │
+│  Agent ──(stdio)──▶ Gateway ──▶ Proxy       │
+│                       │                     │
+│                       ▼                     │
+│              Upstream MCP Servers            │
+│          (filesystem, brave, etc.)          │
+└─────────────────────────────────────────────┘
 ```
 
 **Flow:**
@@ -251,3 +312,10 @@ npm run typecheck:all
 3. Proxy enforces constraints, emits receipts
 4. If allowed, Agent calls Sandbox checkout
 5. User can revoke via Extension → Proxy
+
+**MCP Gateway Flow:**
+1. Agent connects to MCP Gateway via stdio (thinks it's a normal MCP server)
+2. Gateway discovers tools from upstream MCP servers
+3. On every tool call, Gateway enforces via CapNet Proxy
+4. If allowed, forwards call to upstream; if denied, returns error
+5. Agent never knows CapNet is there

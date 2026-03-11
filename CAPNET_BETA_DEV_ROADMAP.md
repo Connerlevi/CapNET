@@ -81,6 +81,16 @@ Why this architecture:
 - [x] List receipts
 - [x] Full lifecycle demo script (`sdk/src/demo.ts`)
 
+### E) SDK DX Overhaul (✅ COMPLETE — Phase 1)
+- [x] Builder-pattern API: `CapNet.create()` → `.agent()` → `.spend().block().issue()`
+- [x] `CapabilityHandle` with `.purchase()`, `.execute()`, `.delegate()`, `.revoke()`
+- [x] Typed error hierarchy: `DeniedError` → `CategoryBlockedError`, `BudgetExceededError`, etc.
+- [x] Budget/duration parsers: `parseBudget("100 USD")`, `parseDuration("30m")`
+- [x] Auto-identity: `loadOrCreateKeypair()` with `~/.capnet/keys/` persistence
+- [x] `protect(agent, { capabilities })` for Proxy-based tool call interception
+- [x] 46 new tests (36 unit + 10 integration), 61 total tests passing
+- [x] Smoke test verified end-to-end
+
 ---
 
 ## 4) Timeline (6 weeks, demo-first)
@@ -229,18 +239,26 @@ The demo is successful when:
    - Same enforcement pipeline regardless of transport — adapters per method
    - **MCP as strategic inflection point**: CapNet as MCP gateway wrapping MCP servers. Agent connects to CapNet thinking it's the MCP server; CapNet enforces policy, then forwards to the real server. "Install and forget" enforcement.
 
-3. **Agent-to-SaaS Policy Layer** (Phase 2)
+3. **Adaptive Governance — Early** (Phase 2)
+   - Policy generation via NL Engine (`POST /capability/suggest`) — user becomes approver, not author
+   - Blast radius dashboard — sum of active capability envelopes (pure aggregation, no ML)
+   - Basic receipt analytics — velocity, amount distribution, denial ratio
    - Normalize permissions across common SaaS
    - Enforce least privilege across tools
    - MCP gateway for tool-calling agents
 
-4. **Cross-org Delegated Trust** (Phase 3)
-   - One org grants another org's agents scoped capabilities
-   - No raw credential sharing
+4. **Adaptive Governance — Full** (Phase 3)
+   - Behavioral baselines — per-agent/per-cap normal patterns (requires real agent traffic)
+   - Anomaly scoring — start with 4 dimensions: velocity, amount, new vendor, new capability
+   - Adaptive response — auto-pause on anomaly threshold (never overrides enforcement)
+   - Cross-org delegated trust — one org's agents get scoped caps from another org
+   - Trust calibration + Proof-of-Claim integration (late Phase 3 / Phase 4)
 
 5. **Universal Capability Fabric** (North Star)
    - The default way networks express trust and collaboration
    - "TCP/IP of agency"
+
+**Critical design constraint:** Intelligence layers advise, flag, and auto-pause — they never override the deterministic enforcement engine. The 7-step enforcement pipeline remains the source of truth. See `CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md` for full technical specification.
 
 **Important distinction:** CapNet is NOT a firewall. It doesn't monitor all traffic or restrict the human user. It's a fence for the agent — scoped authority for the machine actor, invisible to the human. "Power of attorney with limits."
 

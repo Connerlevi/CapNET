@@ -87,7 +87,7 @@ Every decision is logged. Every action produces an audit receipt.
 
 ### Demo Scenarios
 
-Three scenarios demonstrate why this matters:
+Four scenarios demonstrate why this matters:
 
 #### 1. Runaway Agent (`npm run demo:runaway`)
 A cleanup bot with database credentials tries to "tidy up":
@@ -133,7 +133,40 @@ Engineering:     Tool calls only (deploy, test, logs)
 ✗ Sales revoked → Junior stops DENIED (cascade revocation)
 ```
 
-Run all three: `npm run demo:all`
+#### 4. OpenClaw Hijack (`npm run demo:openclaw`)
+A malicious OpenClaw skill attempts data exfiltration:
+```
+Malicious skill from ClawHub silently attempts:
+  - curl to exfiltrate env vars to attacker server
+  - rm -rf ~/.ssh to destroy SSH keys
+  - WhatsApp message with stolen credentials
+  - Sub-agent spawn with full access
+
+WITH CapNet (tool_call restrictions via OpenClaw plugin):
+  ✗ curl exfiltration    DENIED (shell blocked)
+  ✗ rm -rf ~/.ssh        DENIED (shell blocked)
+  ✗ WhatsApp theft       DENIED (messaging blocked)
+  ✗ Sub-agent spawn      DENIED (spawn blocked)
+  ✓ web_search           ALLOWED (in allowed_tools)
+  ✓ fs_read              ALLOWED (in allowed_tools)
+```
+
+#### 5. MCP Gateway (transparent enforcement)
+
+Any MCP-compatible agent gets CapNet enforcement without code changes:
+
+```bash
+# Start the gateway wrapping a filesystem MCP server
+capnet-mcp-gateway \
+  --upstream "fs:npx:-y,@modelcontextprotocol/server-filesystem,/tmp" \
+  --proxy-url http://127.0.0.1:3100
+
+# Agent connects to gateway via stdio — sees tools like read_file, write_file
+# Every tool call is enforced through CapNet policy
+# Agent doesn't even know CapNet is there
+```
+
+Run all five demo scenarios: `npm run demo:all`
 
 ## Why This Matters
 
@@ -199,21 +232,72 @@ Post-revoke purchase    → DENIED: REVOKED
 
 ## Example Usage
 
+### High-Level Builder API (recommended)
+
+```typescript
+import { CapNet } from "@capnet/sdk"
+
+// Connect to proxy
+const capnet = await CapNet.create()
+
+// Create an agent with auto-generated identity
+const agent = capnet.agent("grocery-bot")
+
+// Issue a spend capability
+const cap = await agent
+  .spend({ budget: "50 USD", vendors: ["sandboxmart"] })
+  .block("alcohol", "gift_cards")
+  .issue()
+
+// Purchase items (validates via sandbox, enforces via proxy)
+await cap.purchase([{ sku: "GRO-001", qty: 1 }])
+
+// Delegate to a sub-agent with reduced authority
+const subCap = await cap.delegate({
+  to: "sub-bot",
+  budget: "20 USD",
+})
+
+// Revoke (cascades to all delegated sub-capabilities)
+await cap.revoke()
+```
+
+### Tool Call Capabilities
+
+```typescript
+const toolCap = await agent
+  .toolCalls({ tools: ["web_search", "read_file"], maxCalls: 10 })
+  .block("shell", "spawn")
+  .issue()
+
+// Execute a tool call through enforcement
+await toolCap.execute("web_search", { query: "test" }, "web")
+```
+
+### Typed Error Handling
+
+```typescript
+import { CategoryBlockedError, BudgetExceededError } from "@capnet/sdk"
+
+try {
+  await cap.purchase([{ sku: "ALC-001", qty: 1 }])
+} catch (err) {
+  if (err instanceof CategoryBlockedError) {
+    console.log(`Blocked: ${err.category}`)  // "alcohol"
+  }
+  if (err instanceof BudgetExceededError) {
+    console.log(`Over budget: ${err.requestedCents} > ${err.maxCents}`)
+  }
+}
+```
+
+### Low-Level Client (escape hatch)
+
 ```typescript
 import { CapNetClient } from "@capnet/sdk"
 
-const capnet = new CapNetClient()
-
-// Request a scoped action through the enforcement proxy
-await capnet.requestAction({
-  action: "spend",
-  vendor: "instacart",
-  cart: [
-    { sku: "GRO-001", name: "Organic Milk", price_cents: 599, qty: 1 }
-  ]
-})
-
-// CapNet proxy evaluates the capability before allowing execution
+const client = new CapNetClient()
+// Or via high-level API: capnet.raw
 ```
 
 ## What CapNet Is NOT
@@ -239,7 +323,7 @@ await capnet.requestAction({
 
 ## Current Status
 
-**Phase 0 complete** — core enforcement working end-to-end.
+**Phase 0 complete. Phase 1: SDK DX overhaul + OpenClaw + MCP Gateway complete.**
 
 | Feature | Status |
 |---------|--------|
@@ -250,23 +334,32 @@ await capnet.requestAction({
 | Cascade revocation | Working |
 | Audit trail (receipts) | Working |
 | Chrome extension wallet UI | Working |
-| Demo scenarios (3 stories) | Working |
+| Demo scenarios (5 stories) | Working |
 | MP4 demo recordings (5 videos) | Working |
 | Conformance tests (15/15) | Working |
-
-**All 9 Phase 0 build prompts complete.**
+| **Builder-pattern SDK** | Working |
+| **Typed error hierarchy** | Working |
+| **Auto-identity (keypair persistence)** | Working |
+| **Budget/duration parsers** | Working |
+| **Tool call interception (protect)** | Working |
+| **SDK tests (46 new)** | Working |
+| **OpenClaw enforcement plugin** | Working |
+| **OpenClaw tests (33 new)** | Working |
+| **MCP Gateway (transparent enforcement)** | Working |
+| **MCP Gateway tests (19 new)** | Working |
+| **GitHub MCP demo scenario** | Working |
+| **Total tests: 114** | Working |
+| **CI pipeline (GitHub Actions)** | Working |
 
 **Next:**
 
-- SDK developer experience overhaul
-- OpenClaw integration (agent framework)
-- MCP security gateway
+- SaaS integrations (Stripe test-mode, GitHub API)
 
 ## Roadmap
 
 | Phase | Focus |
 |-------|-------|
-| **Phase 1** | Agent framework integrations (OpenClaw, MCP) |
+| **Phase 1** | Agent framework integrations (OpenClaw ✓, MCP Gateway ✓) |
 | **Phase 2** | SaaS policy enforcement (GitHub, Stripe, Slack) |
 | **Phase 3** | Cross-organization delegation |
 | **North Star** | Universal capability fabric for machine actors |
@@ -274,12 +367,14 @@ await capnet.requestAction({
 ## Project Structure
 
 ```
-shared/      @capnet/shared     — Zod schemas, types, Ed25519 crypto
-proxy/       @capnet/proxy      — Enforcement proxy (port 3100)
-sandbox/     @capnet/sandbox    — Merchant simulator (port 3200)
-sdk/         @capnet/sdk        — Client SDK + demo scripts
-extension/   @capnet/extension  — Chrome MV3 wallet UI
-data/        Runtime storage    — Keys, caps, receipts (gitignored)
+shared/          @capnet/shared          — Zod schemas, types, Ed25519 crypto
+proxy/           @capnet/proxy           — Enforcement proxy (port 3100)
+sandbox/         @capnet/sandbox         — Merchant simulator (port 3200)
+sdk/             @capnet/sdk             — Client SDK + demo scripts
+openclaw-plugin/ @capnet/openclaw-plugin — OpenClaw enforcement plugin
+mcp-gateway/     @capnet/mcp-gateway     — MCP policy enforcement gateway
+extension/       @capnet/extension       — Chrome MV3 wallet UI
+data/            Runtime storage         — Keys, caps, receipts (gitignored)
 ```
 
 ## Scripts
@@ -290,11 +385,13 @@ npm run demo          # Core lifecycle demo
 npm run demo:runaway  # Scenario: Runaway Agent
 npm run demo:hijack   # Scenario: Agent Hijack
 npm run demo:company  # Scenario: Multi-Agent Company
-npm run demo:all      # Run all 3 scenarios
+npm run demo:openclaw # Scenario: OpenClaw Hijack
+npm run demo:github   # Scenario: GitHub MCP Rogue Agent
+npm run demo:all      # Run all 5 scenarios
 npm run demo:clean    # Clear data + run demo
-npm test              # Run conformance tests (15 tests)
+npm test              # Run all tests (114: 15 conformance + 46 SDK + 33 OpenClaw + 20 MCP Gateway)
 npm run build         # Build shared + extension
-npm run typecheck     # Typecheck all packages
+npm run typecheck     # Typecheck all packages (incl. openclaw-plugin, mcp-gateway)
 ```
 
 ## Documentation

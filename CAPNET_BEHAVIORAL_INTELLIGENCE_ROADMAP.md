@@ -1,6 +1,11 @@
-# CapNet — Behavioral Intelligence Roadmap
+# CapNet — Adaptive Governance Roadmap
 
 > Design specification for evolving CapNet from manual policy enforcement to intelligent, adaptive agent governance.
+>
+> **Timeline placement:** This roadmap spans **Phase 2-3** of CapNet development. It depends on real agent traffic from Phase 1 integrations (OpenClaw, MCP gateway). Do not build before Phase 1 adoption is proven.
+>
+> **Phase 2 (safe early, no ML):** Policy generation via NL Engine, blast radius dashboard, basic receipt analytics.
+> **Phase 3 (requires real data):** Behavioral baselines, anomaly scoring, adaptive response, trust calibration.
 
 ---
 

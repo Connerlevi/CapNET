@@ -387,7 +387,7 @@ These principles should guide all implementation choices:
 
 ---
 
-## 17) Implementation status (as of 2026-03-07)
+## 17) Implementation status (as of 2026-03-10)
 
 ### Phase 0: FULLY COMPLETE ✓ (all 9 prompts done)
 
@@ -401,6 +401,7 @@ These principles should guide all implementation choices:
 | Sandbox merchant | Done | 16-item catalog, cart, checkout, orders |
 | Chrome extension | Done | Templates, Active Caps, Receipts, agent identity, delegation display |
 | SDK client | Done | All endpoints, timeouts, delegation, demo script (10 steps) |
+| SDK DX overhaul | Done | Builder API, typed errors, parsers, auto-identity, protect wrapper |
 | Audit trail | Done | Receipts with event types, denial reasons, delegation metadata |
 | Cross-platform scripts | Done | Windows/macOS/Linux compatible |
 
@@ -430,15 +431,70 @@ The demo story works end-to-end (10 steps):
 ### Phase 0 Completion (2026-03-07)
 
 All 9 build prompts complete:
-- 3 demo scenarios (Runaway Agent, Agent Hijack, Multi-Agent Company) with MP4 recordings
+- 4 demo scenarios (Runaway Agent, Agent Hijack, Multi-Agent Company, OpenClaw Hijack) with MP4 recordings for first 3
 - `--record` mode for step-by-step pausable demo playback
-- 15/15 conformance tests passing (vitest): spend enforcement, tool call enforcement, delegation attenuation, cascade revocation, receipt verification
+- 113 tests passing (vitest): 15 conformance + 46 SDK + 33 OpenClaw + 19 MCP Gateway
 
-### Next: Phase 1
+### Phase 1: SDK DX Overhaul — COMPLETE (2026-03-07)
 
-- SDK DX overhaul (simpler developer onboarding)
-- OpenClaw integration (agent framework, 140K GitHub stars)
-- MCP Security Gateway
+High-level builder-pattern SDK wrapping `CapNetClient`:
+- `CapNet.create()` → `.agent()` → `.spend().block().issue()` → `CapabilityHandle`
+- `CapabilityHandle` with `.purchase()`, `.execute()`, `.delegate()`, `.revoke()`
+- Typed error hierarchy: `DeniedError` → `CategoryBlockedError`, `BudgetExceededError`, etc.
+- Budget/duration parsers: `parseBudget("100 USD")`, `parseDuration("30m")`
+- Auto-identity: `loadOrCreateKeypair()` with `~/.capnet/keys/` persistence
+- `protect(agent, { capabilities })` for Proxy-based tool call interception
+- 46 new tests (36 unit + 10 integration)
+
+### Phase 1: OpenClaw Integration — COMPLETE (2026-03-09)
+
+OpenClaw enforcement plugin with full test coverage and demo:
+- `openclaw-plugin/` workspace: `CapNetEnforcer` with auto-identity via `loadOrCreateKeypair()`, typed error classification via `classifyDenialError()`
+- `MockOpenClawRuntime` test harness simulating OpenClaw plugin API (hooks, routes, logger)
+- 33 new tests (25 unit + 8 integration), 94 total tests passing
+- Demo Scenario 4: OpenClaw Hijack — Malicious skill attempts exfiltration/destruction/messaging/spawn, all blocked; legitimate tools still work
+- `npm run demo:openclaw`, `typecheck` now includes openclaw-plugin
+
+### Phase 1: MCP Security Gateway — COMPLETE (2026-03-10)
+
+MCP policy enforcement gateway that wraps any MCP server transparently:
+- `mcp-gateway/` workspace: `CapNetMcpGateway` acts as both MCP client (to upstreams) and MCP server (to agents)
+- `UpstreamManager` connects to MCP servers via `StdioClientTransport`, discovers tools via `client.listTools()`
+- `GatewayEnforcer` validates every tool call against CapNet proxy before forwarding
+- Auto-identity via `loadOrCreateKeypair()`, typed error classification via `classifyDenialError()`
+- Tool category classification: 30+ MCP tool names → 7 categories (filesystem, shell, web, browser, database, git, messaging)
+- CLI: `capnet-mcp-gateway --upstream "name:command:arg1,arg2" [--proxy-url URL] [--fail-policy closed|open]`
+- 19 new tests (9 types + 5 enforcer + 5 integration with real `@modelcontextprotocol/server-filesystem`)
+- CI pipeline: `.github/workflows/ci.yml` with 3 jobs (typecheck, unit tests, integration tests)
+- 113 total tests passing
+
+**Strategic significance:** MCP is the emerging standard for agent-to-tool communication. By wrapping MCP servers, CapNet becomes invisible infrastructure — agents don't even know it's there. This is the path to "install it and it just works."
+
+### Next: Phase 2
+
+- SaaS policy enforcement (Stripe test-mode, GitHub API, Slack)
+- Adaptive Governance (NL policy generation, blast radius dashboard, receipt analytics)
+
+### Phase 2-3: Adaptive Governance (from Behavioral Intelligence Roadmap)
+
+The behavioral intelligence roadmap describes CapNet's evolution from **rules → governance**. The architecture is strong, but it depends on real agent traffic from Phase 1 integrations. Phased as follows:
+
+**Phase 2 — Safe to build early (no ML, pure aggregation):**
+- Policy generation via NL Engine — `POST /capability/suggest`, user becomes approver not author
+- Blast radius dashboard — sum of active capability envelopes
+- Basic receipt analytics — velocity, amount distribution, denial patterns
+
+**Phase 3 — Requires real agent data:**
+- Behavioral baselines (per-agent/per-cap normal patterns)
+- Anomaly scoring (start simple: velocity, amount, new vendor, new capability)
+- Adaptive response (auto-pause on anomaly threshold, never overrides enforcement)
+- Trust calibration + Proof-of-Claim integration (Phase 3 late / Phase 4)
+
+**Critical constraint preserved:** Intelligence layers advise, flag, and auto-pause — they never override the deterministic enforcement engine. The 7-step enforcement pipeline remains the source of truth. If the LLM is compromised (prompt injection, hallucination), the worst outcome is bad advice — never bad enforcement.
+
+**Key strategic asset:** The receipt stream is a behavioral dataset no one else has. Most security products only see what happened. CapNet sees what was attempted. Denied actions are as valuable as allowed ones.
+
+See `CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md` for full technical specification.
 
 ### Phase 1 Integration Targets (pick one to prove "not a toy")
 
@@ -446,18 +502,16 @@ After sandbox demo, prove CapNet gates something real:
 
 | Option | Complexity | Investor Impact |
 |--------|------------|-----------------|
-| **OpenClaw integration** | Medium | "140K-star agent, governed by CapNet" |
+| **OpenClaw integration** | Medium | "140K-star agent, governed by CapNet" — **COMPLETE** |
+| **MCP Security Gateway** | Medium | "Every MCP tool call enforced transparently" — **COMPLETE** |
 | **Stripe test-mode** | Medium | "Real money rails, scoped" |
 | **GitHub API** | Low | "Agent can't delete repos" |
 | **Google Workspace** | Medium | "Agent can read calendar, not delete" |
 | **Slack** | Low | "Agent posts to #general, not #executive" |
 
-**Recommendation:** OpenClaw is the highest-impact target. It's the most popular open-source agent (140K GitHub stars), has documented security issues (Cisco found malicious skills doing data exfiltration), and its own maintainer warns it's "too dangerous" for non-technical users. CapNet solves exactly this. A CapNet skill for OpenClaw would demonstrate the value instantly: same agent, now safe.
+**OpenClaw integration: COMPLETE.** Built as an OpenClaw plugin (`@capnet/openclaw-plugin`) that hooks into the `before_tool_call` lifecycle event. Maps 30+ OpenClaw tools to 9 CapNet categories. Auto-identity via `loadOrCreateKeypair()`. Typed error classification. 33 tests. Demo Scenario 4 shows a malicious skill neutralized while legitimate tools still work.
 
-**OpenClaw integration approaches:**
-1. **CapNet skill** — Build an OpenClaw skill that routes actions through the proxy (cleanest)
-2. **Proxy as middleware** — Point OpenClaw's service endpoints at CapNet proxy
-3. **MCP gateway** — If OpenClaw adopts MCP, CapNet wraps the MCP servers transparently
+**Next priority:** SaaS integrations (Stripe test-mode, GitHub API) to prove CapNet gates real-world services.
 
 ---
 

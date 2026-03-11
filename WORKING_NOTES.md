@@ -4,9 +4,9 @@
 
 ---
 
-## Last Updated: 2026-03-06
+## Last Updated: 2026-03-10
 
-## Current Status: Phase 0 COMPLETE (Prompts 1-9 all done)
+## Current Status: Phase 1 IN PROGRESS (SDK DX + OpenClaw + MCP Gateway COMPLETE, CI pipeline live)
 
 ---
 
@@ -83,13 +83,23 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
   - `GET /orders` and `GET /orders/:id` — list/retrieve orders
 
 ### sdk/ (@capnet/sdk)
-- `src/index.ts` — CapNetClient class with all proxy methods, AbortController timeouts, delegateCapability()
+- `src/index.ts` — CapNetClient class + re-exports for high-level SDK
+- `src/capnet.ts` — `CapNet.create()` entry point + `AgentBuilder` with `.spend()`, `.toolCalls()`
+- `src/handle.ts` — `CapabilityHandle` wrapping CapDoc with `.purchase()`, `.execute()`, `.delegate()`, `.revoke()`
+- `src/builders.ts` — Fluent `SpendCapabilityBuilder` and `ToolCallCapabilityBuilder` with `.block().issue()`
+- `src/errors.ts` — Typed error hierarchy: `CapNetError` → `DeniedError` → `CategoryBlockedError`, `BudgetExceededError`, etc.
+- `src/parsers.ts` — `parseBudget("100 USD")`, `parseDuration("30m")`, `durationToExpiry("1h")`
+- `src/keys.ts` — `loadOrCreateKeypair()` for filesystem Ed25519 keypair persistence (`~/.capnet/keys/`)
+- `src/types.ts` — Shared interfaces: `CapNetOptions`, `SpendOptions`, `ToolCallOptions`, `DelegateOptions`
+- `src/protect.ts` — `protect(agent, { capabilities })` ES Proxy-based tool call interception
+- `src/smoke-test.ts` — Manual smoke test for the builder API
 - `src/demo.ts` — Core lifecycle demo: issue → delegate → allow → deny → cascade revoke → deny (10 steps)
 - `src/demo-utils.ts` — Shared utilities: fetchJson, logging, health checks, types
 - `src/scenarios/runaway-agent.ts` — Scenario 1: Cleanup bot with tool_call enforcement (9 steps)
 - `src/scenarios/agent-hijack.ts` — Scenario 2: Prompt injection vs spend enforcement (9 steps)
 - `src/scenarios/multi-agent-company.ts` — Scenario 3: Role isolation + delegation + cascade (14 steps)
-- `src/scenarios/run-all.ts` — Runs all 3 scenarios sequentially
+- `src/scenarios/openclaw-hijack.ts` — Scenario 4: Malicious OpenClaw skill neutralized (11 steps)
+- `src/scenarios/run-all.ts` — Runs all 4 scenarios sequentially
 
 ### extension/ (@capnet/extension)
 - Chrome MV3 manifest (permissions: storage, host: localhost:3100, 127.0.0.1:3100)
@@ -182,19 +192,48 @@ We're building paradigm-level infrastructure, not a product. The unit of authori
 - [x] `--record` mode adds step-by-step pauses for readable playback
 - [x] Conformance tests: 15/15 passing (`npm test`)
 
-### Priority 2: SDK DX Overhaul
-- Simplify developer onboarding to `import { CapNet } from "capnet"` level
-- Intuitive capability definitions
-- Minimal integration friction
+### Priority 2: SDK DX Overhaul — COMPLETE (2026-03-07)
+- [x] Builder-pattern API: `CapNet.create()` → `.agent()` → `.spend().block().issue()` → `.purchase()`
+- [x] Typed error hierarchy: `DeniedError`, `CategoryBlockedError`, `BudgetExceededError`, etc.
+- [x] Budget/duration parsers: `parseBudget("100 USD")`, `parseDuration("30m")`
+- [x] Auto-identity: `loadOrCreateKeypair()` with `~/.capnet/keys/` persistence
+- [x] `CapabilityHandle` wraps CapDoc with `.purchase()`, `.execute()`, `.delegate()`, `.revoke()`
+- [x] `protect()` wrapper for Proxy-based tool call interception
+- [x] 46 new tests (36 unit + 10 integration), 61 total
+- [x] All existing demos and 15 conformance tests still pass
+- [x] Smoke test script verified end-to-end
 
-### Priority 3: OpenClaw Integration (Phase 1 target)
-- Build CapNet skill for OpenClaw that routes agent actions through proxy
-- 140K GitHub stars, documented security issues — perfect demo of CapNet value
-- Three approaches: CapNet skill, proxy middleware, or MCP gateway
+### Priority 3: OpenClaw Integration (Phase 1 target) — COMPLETE (2026-03-09)
+- [x] Auto-identity via `loadOrCreateKeypair()` (lazy init on first `enforce()` call)
+- [x] Typed error classification via `classifyDenialError()` in `EnforcementResult.errorType`
+- [x] `MockOpenClawRuntime` test harness simulating OpenClaw plugin API
+- [x] 33 new tests (25 unit + 8 integration), 94 total
+- [x] Demo Scenario 4: OpenClaw Hijack — Malicious Skill Neutralized (11 steps)
+- [x] `npm run demo:openclaw` script, `demo:all` updated to run all 4 scenarios
+- [x] `npm run typecheck` now includes `openclaw-plugin`
 
-### Priority 4: MCP Security Gateway
-- CapNet as policy enforcement gateway for MCP tools
-- Wraps MCP servers transparently — agents don't even know CapNet is there
+### Priority 4: MCP Security Gateway (Phase 1) — COMPLETE (2026-03-10)
+- [x] `mcp-gateway/` workspace: `CapNetMcpGateway`, `GatewayEnforcer`, `UpstreamManager`
+- [x] Wraps any MCP server transparently — agents connect via stdio, every tool call enforced
+- [x] Auto-identity via `loadOrCreateKeypair()`, typed error classification
+- [x] Tool category classification: 30+ MCP tool names → 7 categories
+- [x] CLI entry point: `capnet-mcp-gateway --upstream "name:command:args"`
+- [x] 19 new tests (9 types + 5 enforcer + 5 integration), 113 total
+- [x] Tested against real `@modelcontextprotocol/server-filesystem`
+- [x] CI pipeline: `.github/workflows/ci.yml` (typecheck, unit tests, integration tests)
+
+### Priority 5: Governance Layer (Phase 2-3) — from Behavioral Intelligence Roadmap
+- **Phase 2 (safe to build early, no ML, pure aggregation):**
+  - Policy generation via NL Engine (`POST /capability/suggest`) — user becomes approver not author
+  - Blast radius dashboard — sum of active capability envelopes, no ML needed
+  - Basic receipt analytics — velocity, amount distribution, denial ratio
+- **Phase 3 (requires real agent traffic from integrations):**
+  - Behavioral baselines — per-agent/per-cap normal patterns (needs data)
+  - Anomaly scoring — start with 4 dimensions: velocity, amount, new vendor, new capability
+  - Adaptive response — auto-pause on anomaly score threshold (never overrides enforcement)
+  - Trust calibration (late Phase 3) — Proof-of-Claim integration, verified vs unverified actions
+- **Critical design constraint:** Intelligence layers advise/flag/pause — they NEVER override the deterministic enforcement engine. If the LLM is compromised, worst case is bad advice, never bad enforcement.
+- **Renaming consideration:** "Behavioral Intelligence" → "Adaptive Governance" or "Governance Layer" (avoids sounding like an AI monitoring product)
 
 ### Completed (Prompt 7)
 - Executor binding (agent pubkey in cap, verified at enforcement)
@@ -400,6 +439,64 @@ Only after Tier 1 passes 100%:
   - CAPNET_BETA_DEV_ROADMAP.md: Added delegation/toolcall endpoints and denial reasons
   - WORKING_NOTES.md: Updated status, SDK section, priorities
 - **All SDK type-checks pass**: `npx tsc --noEmit -p sdk/tsconfig.json`
+
+### 2026-03-07 — SDK DX Overhaul (Phase 1)
+- **Built high-level builder-pattern SDK** wrapping existing `CapNetClient` (no breaking changes):
+  - `CapNet.create()` → verifies proxy health, returns facade
+  - `.agent(id)` → `AgentBuilder` with lazy keypair resolution
+  - `.spend({ budget: "50 USD", vendors: [...] }).block("alcohol").issue()` → `CapabilityHandle`
+  - `.toolCalls({ tools: [...], maxCalls: 10 }).block("shell").issue()` → `CapabilityHandle`
+  - `CapabilityHandle.purchase()` encapsulates sandbox cart-validate → proxy action two-step
+  - `CapabilityHandle.execute()` builds tool_call requests with auto request ID
+  - `CapabilityHandle.delegate()` and `.revoke()` for delegation/revocation
+  - `protect(agent, { capabilities })` for ES Proxy-based tool interception
+- **Typed error hierarchy**: `CapNetError` → `DeniedError` → `CategoryBlockedError`, `BudgetExceededError`, `RevokedCapabilityError`, `ToolNotAllowedError`, `ExecutorMismatchError`, `ExpiredCapabilityError`
+- **Pure utility functions**: `parseBudget("100 USD")` → `{ cents: 10000, currency: "USD" }`, `parseDuration("30m")` → ms, `durationToExpiry("1h")` → ISO string
+- **Filesystem keypair persistence**: `loadOrCreateKeypair(agentId)` in `~/.capnet/keys/`
+- **New files**: `sdk/src/{types,parsers,errors,keys,handle,builders,capnet,protect}.ts` + `smoke-test.ts`
+- **46 new tests** (36 unit + 10 integration): parsers, errors, keys, full builder lifecycle
+- **All verification passed**: `npm run typecheck` clean, 15/15 conformance, 61/61 total tests, `npm run demo:all` all 3 scenarios, smoke test end-to-end
+- **Existing code untouched**: only appended re-exports to `sdk/src/index.ts`
+
+### 2026-03-09 — OpenClaw Integration COMPLETE (Phase 1)
+- **Plugin enhancements**:
+  - `enforcer.ts`: Auto-identity via `loadOrCreateKeypair()` — lazy init on first `enforce()`, no manual keypair config needed
+  - `enforcer.ts`: Typed error classification via `classifyDenialError()` → `EnforcementResult.errorType` field
+  - `types.ts`: Added `keysDir` config option for custom keypair directory
+  - `index.ts`: Deny messages now include `[ErrorType]` suffix (e.g. `[CategoryBlockedError]`)
+- **Test harness**: `tests/openclaw/harness.ts` — `MockOpenClawRuntime` simulates OpenClaw plugin API (hooks, routes, logger, trigger methods)
+- **33 new tests** (25 unit + 8 integration):
+  - `enforcer.test.ts` (15): shouldGate logic, category mapping, fail policy
+  - `plugin.test.ts` (10): hook registration, status endpoint, config logging, before_tool_call behavior
+  - `integration.test.ts` (8): full lifecycle with proxy — allow/deny/revoke/receipts/typed errors
+- **Demo Scenario 4**: OpenClaw Hijack — Malicious Skill Neutralized
+  - Story: Malicious "productivity" skill from ClawHub attempts exfiltration, destruction, messaging, and sub-agent spawn
+  - 6 tool calls: 4 denied (shell, messaging, spawn), 2 allowed (web_search, fs_read)
+  - `npm run demo:openclaw` script added
+- **Updated scripts**:
+  - `demo:all` now runs all 4 scenarios (was 3)
+  - `typecheck` now includes `openclaw-plugin/tsconfig.json`
+  - SDK `run-all.ts` updated to include Scenario 4
+- **Verification**: 94/94 tests passing, all 4 demos work, typecheck clean across all packages
+
+### 2026-03-10 — MCP Security Gateway + CI Pipeline
+- **MCP Gateway workspace** (`mcp-gateway/`): Full MCP-to-CapNet policy enforcement gateway
+  - `types.ts`: `GatewayConfig`, `UpstreamServer`, `GatewayTool` interfaces + `classifyTool()` with 30+ tool→category mappings
+  - `upstream.ts`: `UpstreamManager` — connects to MCP servers via `StdioClientTransport`, discovers tools, forwards calls
+  - `enforcer.ts`: `GatewayEnforcer` — validates tool calls against CapNet proxy, auto-identity, fail policy, typed errors
+  - `gateway.ts`: `CapNetMcpGateway` — the core MCP server, wraps upstream tools with enforcement on every call
+  - `index.ts`: CLI entry point with `--upstream "name:command:arg1,arg2"` parsing, stdio transport
+- **19 new tests** (9 types unit + 5 enforcer unit + 5 integration):
+  - `tests/mcp-gateway/types.test.ts`: Tool classification across all 7 categories
+  - `tests/mcp-gateway/enforcer.test.ts`: Fail policy (closed/open), latency reporting, proxy check
+  - `tests/mcp-gateway/gateway.test.ts`: Full lifecycle with real `@modelcontextprotocol/server-filesystem`
+- **CI pipeline** (`.github/workflows/ci.yml`):
+  - 3 jobs: `typecheck`, `unit-tests`, `integration-tests`
+  - Integration tests start proxy+sandbox, wait for health, run full suite
+  - Triggers on push/PR to main/master
+- **TypeScript strictness fixes**: `exactOptionalPropertyTypes` required changes in upstream.ts (env, description, isError) and index.ts (config assignments)
+- **Updated root package.json**: Added `mcp-gateway` workspace, `typecheck` includes mcp-gateway
+- **Verification**: 113/113 tests passing, typecheck clean across all 6 packages
 
 ### 2026-02-18 — Doc audit, bug fixes, investor doc, initial commit
 - **Reinstalled node_modules from WSL** (fixed esbuild platform mismatch from Windows install)
