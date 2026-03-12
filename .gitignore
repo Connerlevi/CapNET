@@ -15,3 +15,6 @@ data/
 # Word temp/lock files
 ~$*
 CapNET/
+
+# Claude Code worktrees
+.claude/

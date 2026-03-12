@@ -33,7 +33,7 @@ jobs:
       - run: npm ci
       - run: npm run build:shared
       - run: npx tsc -p sdk/tsconfig.json
-      - run: npx vitest run tests/sdk/parsers.test.ts tests/sdk/errors.test.ts tests/sdk/keys.test.ts tests/openclaw/enforcer.test.ts tests/openclaw/plugin.test.ts tests/mcp-gateway/types.test.ts tests/mcp-gateway/enforcer.test.ts
+      - run: npm run test:unit
 
   integration-tests:
     name: Integration Tests

@@ -34,6 +34,7 @@
     "typecheck": "tsc --noEmit -p proxy/tsconfig.json && tsc --noEmit -p sandbox/tsconfig.json && tsc --noEmit -p sdk/tsconfig.json && tsc --noEmit -p openclaw-plugin/tsconfig.json && tsc --noEmit -p mcp-gateway/tsconfig.json",
     "typecheck:all": "npm run typecheck && npm run build:extension",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude 'tests/conformance.test.ts' --exclude 'tests/sdk/builder.test.ts' --exclude 'tests/openclaw/integration.test.ts' --exclude 'tests/mcp-gateway/gateway.test.ts'",
     "test:watch": "vitest"
   },
   "devDependencies": {
