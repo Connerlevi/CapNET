@@ -432,6 +432,7 @@ npm run demo:slack    # Scenario: Slack MCP Chatty Agent
 
 | Doc | Purpose |
 |-----|---------|
+| [DEVELOPER_TESTING.md](DEVELOPER_TESTING.md) | **Start here** — setup, what to test, what to report |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, project structure, how to contribute |
 | [TESTING_QUICKSTART.md](TESTING_QUICKSTART.md) | 5-minute testing setup |
 | [TESTER_GUIDE.md](TESTER_GUIDE.md) | Complete tester manual: scenarios, FAQ |
