@@ -330,11 +330,49 @@ When reporting issues, include:
 
 | Command | What it does |
 |---------|--------------|
+| `npm run build` | Builds shared library + extension |
 | `npm run dev` | Starts proxy + sandbox (keep running!) |
-| `npm run demo` | Runs automated test script |
+| `npm run test:unit` | Runs 77 unit tests (no proxy needed) |
+| `npm test` | Runs all tests (proxy + sandbox must be running) |
+| `npm run demo` | Runs core lifecycle demo |
+| `npm run demo:all` | Runs all 6 demo scenarios |
 | `npm run demo:clean` | Clears data and runs demo |
 | `npm run build:extension` | Rebuilds the extension |
 | `CAPNET_DEMO_SEED=abc npm run demo` | Run with seed for easier comparison |
+
+---
+
+## Demo Scenarios
+
+Beyond the core lifecycle demo, there are 6 scenarios showing real-world attack prevention:
+
+| Command | Scenario | What It Shows |
+|---------|----------|---------------|
+| `npm run demo` | Core Lifecycle | Budget, category blocking, revocation |
+| `npm run demo:runaway` | Runaway Agent | Bot with DB creds tries to "tidy up" |
+| `npm run demo:hijack` | Agent Hijack | Prompt injection steals credentials |
+| `npm run demo:company` | Multi-Agent Company | Three agents with isolated permissions |
+| `npm run demo:openclaw` | OpenClaw Hijack | Plugin enforcement blocks policy bypass |
+| `npm run demo:github` | GitHub MCP | Rogue code agent blocked from merging/forking |
+| `npm run demo:slack` | Slack MCP | Support bot blocked from harvesting users |
+
+Run all scenarios: `npm run demo:all`
+
+---
+
+## Automated Tests
+
+Run unit tests first (no proxy needed):
+
+```bash
+npm run test:unit    # 77 tests, should all pass
+```
+
+Then with proxy + sandbox running, run the full suite:
+
+```bash
+npm test             # 115 tests (77 unit + 38 integration)
+```
 
 ---
 

@@ -415,15 +415,12 @@ Even "this is weird but not broken" observations are valuable. See [Reporting Is
 
 - **Don't test with real credentials** — This is a sandbox, not production
 - **Don't run on production systems** — Local development only
-- **Don't share the code publicly** — Pre-release, NDA applies
 - **Don't test over public networks** — Localhost only for now
 - **Don't expect perfect UX** — This is Phase 0, functionality over polish
 
 ### Don't Worry About
 
 - **Bundle size warnings** — Known, acceptable for demo
-- **Missing features** — Delegation/attenuation not implemented yet
-- **Single agent limit** — Multi-agent is future work
 - **Local-only proxy** — Remote proxy is future work
 
 ---
@@ -550,10 +547,13 @@ A: Yes, but manual testing finds different bugs. Do both if you can.
 | Command | Purpose |
 |---------|---------|
 | `npm install` | Install dependencies (once) |
+| `npm run build` | Build shared library + extension |
 | `npm run dev` | Start proxy + sandbox (keep running) |
-| `npm run demo` | Run automated test script |
+| `npm run test:unit` | Run unit tests (no proxy needed) |
+| `npm test` | Run all tests (proxy + sandbox must be running) |
+| `npm run demo` | Run core lifecycle demo |
+| `npm run demo:all` | Run all 6 demo scenarios |
 | `npm run demo:clean` | Clear data and run demo |
-| `npm run build` | Rebuild shared + extension |
 | `npm run build:extension` | Rebuild extension only |
 
 ### URLs

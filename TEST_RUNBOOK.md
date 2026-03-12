@@ -681,10 +681,8 @@ Only after Tier 1 passes 100%:
 
 ## Known Issues / Limitations
 
-1. **Bundle size**: Extension is ~328KB due to Zod inclusion (acceptable for demo)
-2. **No delegation yet**: Attenuation/sub-capabilities not implemented
-3. **Single agent per extension**: Multi-agent management is future work
-4. **Local proxy only**: No remote proxy configuration yet
+1. **Bundle size**: Extension is ~315KB due to Zod inclusion (acceptable for demo)
+2. **Local proxy only**: No remote proxy configuration yet
 
 ## Verified Test Results (2026-02-18)
 
