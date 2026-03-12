@@ -8,7 +8,7 @@ import {
   RevokedCapabilityError,
   ToolNotAllowedError,
 } from "../../sdk/src/errors.js";
-import { generateEd25519Keypair } from "@capnet/shared";
+import { generateEd25519Keypair } from "@capnet-auth/shared";
 
 const PROXY_URL = process.env.PROXY_URL || "http://127.0.0.1:3100";
 const SANDBOX_URL = process.env.SANDBOX_URL || "http://127.0.0.1:3200";

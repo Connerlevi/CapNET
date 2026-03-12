@@ -16,7 +16,7 @@ import {
   signObjectEd25519,
   verifyObjectEd25519,
   capUnsignedPayload,
-} from "@capnet/shared";
+} from "@capnet-auth/shared";
 
 // Type guards for constraint narrowing
 function isSpendConstraints(c: SpendConstraints | ToolCallConstraints): c is SpendConstraints {

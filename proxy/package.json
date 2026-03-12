@@ -1,5 +1,5 @@
 {
-  "name": "@capnet/proxy",
+  "name": "@capnet-auth/proxy",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -8,7 +8,7 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@capnet/shared": "*",
+    "@capnet-auth/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "zod": "^3.22.4"

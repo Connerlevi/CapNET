@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
-import { generateEd25519Keypair, type Keypair } from "@capnet/shared";
-import { CapNetClient } from "@capnet/sdk";
+import { generateEd25519Keypair, type Keypair } from "@capnet-auth/shared";
+import { CapNetClient } from "@capnet-auth/sdk";
 import { MockOpenClawRuntime } from "./harness.js";
 import { register } from "../../openclaw-plugin/src/index.js";
 

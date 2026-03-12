@@ -13,13 +13,13 @@ import type {
   ActionRequest,
   ActionResult,
   Receipt,
-} from "@capnet/shared";
+} from "@capnet-auth/shared";
 
 import {
   CapDocSchema,
   ReceiptSchema,
   ActionResultSchema,
-} from "@capnet/shared";
+} from "@capnet-auth/shared";
 
 // Re-export for consumers
 export type { CapDoc, ActionRequest, ActionResult, Receipt };

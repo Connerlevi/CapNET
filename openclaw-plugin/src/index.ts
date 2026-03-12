@@ -1,5 +1,5 @@
 /**
- * @capnet/openclaw-plugin — CapNet enforcement for OpenClaw agents
+ * @capnet-auth/openclaw-plugin — CapNet enforcement for OpenClaw agents
  *
  * This plugin hooks into OpenClaw's before_tool_call and after_tool_call
  * lifecycle events to enforce CapNet capabilities on every tool invocation.

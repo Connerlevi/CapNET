@@ -10,7 +10,7 @@ import {
   ExpiredCapabilityError,
   classifyDenialError,
 } from "../../sdk/src/errors.js";
-import type { ActionResult } from "@capnet/shared";
+import type { ActionResult } from "@capnet-auth/shared";
 
 function makeResult(reason: string): ActionResult {
   return {

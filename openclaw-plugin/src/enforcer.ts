@@ -6,9 +6,9 @@
  */
 
 import crypto from "crypto";
-import type { ToolCallRequest } from "@capnet/shared";
-import { CapNetClient, loadOrCreateKeypair, classifyDenialError } from "@capnet/sdk";
-import type { DeniedError } from "@capnet/sdk";
+import type { ToolCallRequest } from "@capnet-auth/shared";
+import { CapNetClient, loadOrCreateKeypair, classifyDenialError } from "@capnet-auth/sdk";
+import type { DeniedError } from "@capnet-auth/sdk";
 import { getToolCategory } from "./types.js";
 import type { CapNetPluginConfig } from "./types.js";
 

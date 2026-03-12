@@ -1,5 +1,5 @@
 {
-  "name": "@capnet/sandbox",
+  "name": "@capnet-auth/sandbox",
   "version": "0.1.0",
   "private": true,
   "scripts": {

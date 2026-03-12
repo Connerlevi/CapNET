@@ -1,10 +1,10 @@
-import type { CapDoc, ActionResult, ToolCategory } from "@capnet/shared";
+import type { CapDoc, ActionResult, ToolCategory } from "@capnet-auth/shared";
 import type { CapNetClient } from "./index.js";
 import type { DelegateOptions } from "./types.js";
 import { classifyDenialError } from "./errors.js";
 import { parseBudget, durationToExpiry } from "./parsers.js";
 import { loadOrCreateKeypair } from "./keys.js";
-import { generateEd25519Keypair, type Keypair } from "@capnet/shared";
+import { generateEd25519Keypair, type Keypair } from "@capnet-auth/shared";
 
 function makeRequestId(): string {
   const ts = Date.now();

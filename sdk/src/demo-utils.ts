@@ -12,7 +12,7 @@ import {
   type ActionResult,
   type Receipt,
   type ActionRequest,
-} from "@capnet/shared";
+} from "@capnet-auth/shared";
 
 // Re-export for convenience — scenario scripts only need to import demo-utils
 export {

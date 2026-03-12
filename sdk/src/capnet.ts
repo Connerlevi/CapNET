@@ -1,4 +1,4 @@
-import { type Keypair, generateEd25519Keypair } from "@capnet/shared";
+import { type Keypair, generateEd25519Keypair } from "@capnet-auth/shared";
 import { CapNetClient, type CapNetClientOptions } from "./index.js";
 import type { CapNetOptions, AgentIdentityOptions, SpendOptions, ToolCallOptions } from "./types.js";
 import { SpendCapabilityBuilder, ToolCallCapabilityBuilder } from "./builders.js";

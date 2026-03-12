@@ -1,4 +1,4 @@
-import type { Keypair } from "@capnet/shared";
+import type { Keypair } from "@capnet-auth/shared";
 
 export interface CapNetOptions {
   proxy?: string;

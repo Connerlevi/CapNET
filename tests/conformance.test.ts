@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from "vitest";
-import { generateEd25519Keypair, type Keypair, type CapDoc, type ActionResult } from "@capnet/shared";
+import { generateEd25519Keypair, type Keypair, type CapDoc, type ActionResult } from "@capnet-auth/shared";
 
 const PROXY = process.env.PROXY_URL || "http://127.0.0.1:3100";
 const SANDBOX = process.env.SANDBOX_URL || "http://127.0.0.1:3200";

@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { CapDoc, Receipt } from "@capnet/shared";
+import type { CapDoc, Receipt } from "@capnet-auth/shared";
 
 // -----------------------------------------------------------------------------
 // Data directory (stable path, env override supported)

@@ -12,7 +12,7 @@ import type {
   ActionResult,
   ToolCallRequest,
   Receipt,
-} from "@capnet/shared";
+} from "@capnet-auth/shared";
 
 export interface CapNetClientOptions {
   /** Proxy URL (default: http://127.0.0.1:3100) */
@@ -227,7 +227,7 @@ export class CapNetClient {
 }
 
 // Re-export types for convenience
-export type { CapDoc, ActionRequest, ActionResult, ToolCallRequest, Receipt } from "@capnet/shared";
+export type { CapDoc, ActionRequest, ActionResult, ToolCallRequest, Receipt } from "@capnet-auth/shared";
 
 // ---------------------------------------------------------------------------
 // High-level SDK (Phase 1: SDK DX Overhaul)

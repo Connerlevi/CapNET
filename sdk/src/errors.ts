@@ -1,4 +1,4 @@
-import type { ActionResult } from "@capnet/shared";
+import type { ActionResult } from "@capnet-auth/shared";
 
 export class CapNetError extends Error {
   constructor(message: string) {

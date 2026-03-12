@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { generateEd25519Keypair } from "@capnet/shared";
-import { CapNetClient } from "@capnet/sdk";
+import { generateEd25519Keypair } from "@capnet-auth/shared";
+import { CapNetClient } from "@capnet-auth/sdk";
 import { CapNetMcpGateway } from "../../mcp-gateway/src/gateway.js";
 import type { GatewayConfig } from "../../mcp-gateway/src/types.js";
 

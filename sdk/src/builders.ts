@@ -1,5 +1,5 @@
 import type { CapNetClient } from "./index.js";
-import type { Keypair } from "@capnet/shared";
+import type { Keypair } from "@capnet-auth/shared";
 import { CapabilityHandle } from "./handle.js";
 import { parseBudget, durationToExpiry } from "./parsers.js";
 

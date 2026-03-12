@@ -3,7 +3,7 @@
  * Run: npx tsx sdk/src/smoke-test.ts
  */
 import { CapNet, CapabilityHandle, DeniedError, CategoryBlockedError, BudgetExceededError } from "./index.js";
-import { generateEd25519Keypair } from "@capnet/shared";
+import { generateEd25519Keypair } from "@capnet-auth/shared";
 
 async function main() {
   console.log("=== SDK DX Smoke Test ===\n");

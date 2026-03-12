@@ -1,7 +1,15 @@
 {
-  "name": "@capnet/sdk",
+  "name": "@capnet-auth/sdk",
   "version": "0.1.0",
-  "private": true,
+  "description": "SDK for CapNet capability-based authorization — builder API, typed errors, auto-identity",
+  "license": "MIT",
+  "author": "Conner Levi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Connerlevi/CapNET.git",
+    "directory": "sdk"
+  },
+  "keywords": ["capnet", "capabilities", "authorization", "ai-agents", "sdk"],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -16,7 +24,7 @@
     "demo:slack": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/slack-mcp.ts"
   },
   "dependencies": {
-    "@capnet/shared": "*"
+    "@capnet-auth/shared": "0.1.0"
   },
   "devDependencies": {
     "tsx": "^4.7.0",

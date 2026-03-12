@@ -1,5 +1,5 @@
 {
-  "name": "@capnet/extension",
+  "name": "@capnet-auth/extension",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,7 @@
     "dev": "webpack --mode development --watch"
   },
   "dependencies": {
-    "@capnet/shared": "*",
+    "@capnet-auth/shared": "*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tweetnacl": "^1.0.3",

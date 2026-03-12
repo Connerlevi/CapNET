@@ -1,5 +1,5 @@
 {
-  "name": "@capnet/mcp-gateway",
+  "name": "@capnet-auth/mcp-gateway",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -9,8 +9,8 @@
     "start": "node ../node_modules/tsx/dist/cli.mjs src/index.ts"
   },
   "dependencies": {
-    "@capnet/shared": "*",
-    "@capnet/sdk": "*",
+    "@capnet-auth/shared": "*",
+    "@capnet-auth/sdk": "*",
     "@modelcontextprotocol/sdk": "^1.27.1"
   },
   "devDependencies": {

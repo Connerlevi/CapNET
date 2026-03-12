@@ -1,15 +1,24 @@
 {
-  "name": "@capnet/openclaw-plugin",
+  "name": "@capnet-auth/openclaw-plugin",
   "version": "0.1.0",
-  "private": true,
+  "description": "CapNet enforcement plugin for OpenClaw agents — scoped tool-call permissions",
+  "license": "MIT",
+  "author": "Conner Levi",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Connerlevi/CapNET.git",
+    "directory": "openclaw-plugin"
+  },
+  "keywords": ["capnet", "openclaw", "plugin", "authorization", "ai-agents", "tool-enforcement"],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
     "build": "tsc"
   },
   "dependencies": {
-    "@capnet/shared": "*",
-    "@capnet/sdk": "*"
+    "@capnet-auth/shared": "0.1.0",
+    "@capnet-auth/sdk": "0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.3.3"

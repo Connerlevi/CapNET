@@ -1,5 +1,5 @@
 import type { CapabilityHandle } from "./handle.js";
-import type { ToolCategory } from "@capnet/shared";
+import type { ToolCategory } from "@capnet-auth/shared";
 
 export interface ProtectOptions {
   capabilities: CapabilityHandle[];

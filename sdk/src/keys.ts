@@ -1,4 +1,4 @@
-import { generateEd25519Keypair, type Keypair } from "@capnet/shared";
+import { generateEd25519Keypair, type Keypair } from "@capnet-auth/shared";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";

@@ -18,7 +18,7 @@ With CapNet:  AI Agent  →  Capability  →  Scoped Authority
 ## Developer Quick Start
 
 ```typescript
-import { CapNet } from "@capnet/sdk"
+import { CapNet } from "@capnet-auth/sdk"
 
 const capnet = await CapNet.create()
 const agent  = capnet.agent("my-agent")
@@ -291,7 +291,7 @@ npm run demo:all        # All 6 attack scenarios
 ### Spend Capability
 
 ```typescript
-import { CapNet } from "@capnet/sdk"
+import { CapNet } from "@capnet-auth/sdk"
 
 const capnet = await CapNet.create()
 const agent  = capnet.agent("shopping-bot")
@@ -337,7 +337,7 @@ capnet-mcp-gateway \
 ### Typed Error Handling
 
 ```typescript
-import { CategoryBlockedError, BudgetExceededError, ToolNotAllowedError } from "@capnet/sdk"
+import { CategoryBlockedError, BudgetExceededError, ToolNotAllowedError } from "@capnet-auth/sdk"
 
 try {
   await cap.purchase(cart)
@@ -399,13 +399,13 @@ try {
 ## Project Structure
 
 ```
-shared/          @capnet/shared          — Zod schemas, types, Ed25519 crypto
-proxy/           @capnet/proxy           — Enforcement proxy (port 3100)
-sandbox/         @capnet/sandbox         — Merchant simulator (port 3200)
-sdk/             @capnet/sdk             — Client SDK + demo scripts
-openclaw-plugin/ @capnet/openclaw-plugin — OpenClaw enforcement plugin
-mcp-gateway/     @capnet/mcp-gateway     — MCP policy enforcement gateway
-extension/       @capnet/extension       — Chrome MV3 wallet UI
+shared/          @capnet-auth/shared          — Zod schemas, types, Ed25519 crypto
+proxy/           @capnet-auth/proxy           — Enforcement proxy (port 3100)
+sandbox/         @capnet-auth/sandbox         — Merchant simulator (port 3200)
+sdk/             @capnet-auth/sdk             — Client SDK + demo scripts
+openclaw-plugin/ @capnet-auth/openclaw-plugin — OpenClaw enforcement plugin
+mcp-gateway/     @capnet-auth/mcp-gateway     — MCP policy enforcement gateway
+extension/       @capnet-auth/extension       — Chrome MV3 wallet UI
 data/            Runtime storage         — Keys, caps, receipts (gitignored)
 ```
 
