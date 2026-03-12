@@ -74,6 +74,17 @@ describe("classifyTool", () => {
     expect(classifyTool("slack_post_message")).toBe("messaging");
   });
 
+  it("classifies Slack MCP server tools", () => {
+    expect(classifyTool("slack_list_channels")).toBe("messaging");
+    expect(classifyTool("slack_post_message")).toBe("messaging");
+    expect(classifyTool("slack_reply_to_thread")).toBe("messaging");
+    expect(classifyTool("slack_add_reaction")).toBe("messaging");
+    expect(classifyTool("slack_get_channel_history")).toBe("messaging");
+    expect(classifyTool("slack_get_thread_replies")).toBe("messaging");
+    expect(classifyTool("slack_get_users")).toBe("messaging");
+    expect(classifyTool("slack_get_user_profile")).toBe("messaging");
+  });
+
   it("returns 'other' for unknown tools", () => {
     expect(classifyTool("unknown_tool")).toBe("other");
     expect(classifyTool("custom_action")).toBe("other");

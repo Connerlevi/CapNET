@@ -1,5 +1,5 @@
 /**
- * Run all five CapNet demo scenarios sequentially.
+ * Run all six CapNet demo scenarios sequentially.
  *
  * Each scenario tells a distinct story about why capability-based
  * authorization matters for AI agents.
@@ -10,6 +10,7 @@ import { main as hijack } from "./agent-hijack";
 import { main as company } from "./multi-agent-company";
 import { main as openclawHijack } from "./openclaw-hijack";
 import { main as githubMcp } from "./github-mcp";
+import { main as slackMcp } from "./slack-mcp";
 
 async function main() {
   console.log("\n" + "#".repeat(60));
@@ -34,8 +35,12 @@ async function main() {
 
   await githubMcp();
 
+  console.log("\n\n");
+
+  await slackMcp();
+
   console.log("\n" + "#".repeat(60));
-  console.log("#  All 5 scenarios complete.");
+  console.log("#  All 6 scenarios complete.");
   console.log("#  Every agent was leashed. Every attack was stopped.");
   console.log("#".repeat(60));
 }

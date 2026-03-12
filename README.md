@@ -87,7 +87,7 @@ Every decision is logged. Every action produces an audit receipt.
 
 ### Demo Scenarios
 
-Four scenarios demonstrate why this matters:
+Six scenarios demonstrate why this matters:
 
 #### 1. Runaway Agent (`npm run demo:runaway`)
 A cleanup bot with database credentials tries to "tidy up":
@@ -151,22 +151,37 @@ WITH CapNet (tool_call restrictions via OpenClaw plugin):
   ✓ fs_read              ALLOWED (in allowed_tools)
 ```
 
-#### 5. MCP Gateway (transparent enforcement)
+#### 5. GitHub MCP — Rogue Code Agent (`npm run demo:github`)
+Prompt injection in a GitHub issue tricks the code assistant:
+```
+WITHOUT CapNet: backdoor merged, repo forked to public, code pushed to main
 
-Any MCP-compatible agent gets CapNet enforcement without code changes:
-
-```bash
-# Start the gateway wrapping a filesystem MCP server
-capnet-mcp-gateway \
-  --upstream "fs:npx:-y,@modelcontextprotocol/server-filesystem,/tmp" \
-  --proxy-url http://127.0.0.1:3100
-
-# Agent connects to gateway via stdio — sees tools like read_file, write_file
-# Every tool call is enforced through CapNet policy
-# Agent doesn't even know CapNet is there
+WITH CapNet (tool_call restrictions via MCP Gateway):
+  ✓ get_file_contents    ALLOWED (read source code)
+  ✓ create_pull_request  ALLOWED (submit for review)
+  ✗ merge_pull_request   DENIED (not in allowed_tools)
+  ✗ fork_repository      DENIED (not in allowed_tools)
+  ✗ push_files           DENIED (not in allowed_tools)
+  ✗ create_repository    DENIED (not in allowed_tools)
+  ✓ list_issues          ALLOWED (read issue tracker)
 ```
 
-Run all five demo scenarios: `npm run demo:all`
+#### 6. Slack MCP — The Chatty Agent (`npm run demo:slack`)
+Support bot with Slack access gets prompt-injected:
+```
+WITHOUT CapNet: employee directory harvested, executive thread hijacked
+
+WITH CapNet (tool_call restrictions via MCP Gateway):
+  ✓ slack_list_channels      ALLOWED (find #support)
+  ✓ slack_get_channel_history ALLOWED (read questions)
+  ✓ slack_post_message        ALLOWED (answer in #support)
+  ✗ slack_get_users           DENIED (no employee harvesting)
+  ✗ slack_get_user_profile    DENIED (no PII exfiltration)
+  ✗ slack_reply_to_thread     DENIED (no thread hijacking)
+  ✗ slack_add_reaction        DENIED (no fake approvals)
+```
+
+Run all six demo scenarios: `npm run demo:all`
 
 ## Why This Matters
 
@@ -212,11 +227,14 @@ Key principles:
 ## Try It in 60 Seconds
 
 ```bash
-git clone https://github.com/<org>/capnet
-cd capnet
+git clone https://github.com/Connerlevi/CapNET.git
+cd CapNET
 
 npm install
-npm run dev       # Starts proxy + sandbox
+npm run build     # Build shared library
+npm run dev       # Starts proxy (3100) + sandbox (3200)
+
+# In another terminal:
 npm run demo      # Full lifecycle demo
 ```
 
@@ -291,6 +309,23 @@ try {
 }
 ```
 
+### MCP Gateway (wrap any MCP server)
+
+CapNet can transparently enforce policy on any MCP tool server. The agent
+connects to the gateway via stdio and sees normal MCP tools — but every
+call routes through CapNet policy enforcement.
+
+```bash
+# Wrap GitHub + Slack MCP servers with CapNet enforcement
+capnet-mcp-gateway \
+  --upstream "github:npx:-y,@modelcontextprotocol/server-github" \
+  --upstream "slack:npx:-y,@modelcontextprotocol/server-slack" \
+  --proxy-url http://127.0.0.1:3100
+```
+
+The agent discovers tools like `create_pull_request`, `slack_post_message`,
+etc. — but can only use tools allowed by its CapNet capability.
+
 ### Low-Level Client (escape hatch)
 
 ```typescript
@@ -334,7 +369,7 @@ const client = new CapNetClient()
 | Cascade revocation | Working |
 | Audit trail (receipts) | Working |
 | Chrome extension wallet UI | Working |
-| Demo scenarios (5 stories) | Working |
+| Demo scenarios (6 stories) | Working |
 | MP4 demo recordings (5 videos) | Working |
 | Conformance tests (15/15) | Working |
 | **Builder-pattern SDK** | Working |
@@ -348,7 +383,8 @@ const client = new CapNetClient()
 | **MCP Gateway (transparent enforcement)** | Working |
 | **MCP Gateway tests (19 new)** | Working |
 | **GitHub MCP demo scenario** | Working |
-| **Total tests: 114** | Working |
+| **Slack MCP demo scenario** | Working |
+| **Total tests: 115** | Working |
 | **CI pipeline (GitHub Actions)** | Working |
 
 **Next:**
@@ -360,7 +396,7 @@ const client = new CapNetClient()
 | Phase | Focus |
 |-------|-------|
 | **Phase 1** | Agent framework integrations (OpenClaw ✓, MCP Gateway ✓) |
-| **Phase 2** | SaaS policy enforcement (GitHub, Stripe, Slack) |
+| **Phase 2** | SaaS policy enforcement (Stripe, more MCP servers) |
 | **Phase 3** | Cross-organization delegation |
 | **North Star** | Universal capability fabric for machine actors |
 
@@ -387,9 +423,10 @@ npm run demo:hijack   # Scenario: Agent Hijack
 npm run demo:company  # Scenario: Multi-Agent Company
 npm run demo:openclaw # Scenario: OpenClaw Hijack
 npm run demo:github   # Scenario: GitHub MCP Rogue Agent
-npm run demo:all      # Run all 5 scenarios
+npm run demo:slack    # Scenario: Slack MCP Chatty Agent
+npm run demo:all      # Run all 6 scenarios
 npm run demo:clean    # Clear data + run demo
-npm test              # Run all tests (114: 15 conformance + 46 SDK + 33 OpenClaw + 20 MCP Gateway)
+npm test              # Run all tests (115: 15 conformance + 46 SDK + 33 OpenClaw + 21 MCP Gateway)
 npm run build         # Build shared + extension
 npm run typecheck     # Typecheck all packages (incl. openclaw-plugin, mcp-gateway)
 ```

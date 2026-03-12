@@ -12,7 +12,8 @@
     "demo:company": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/multi-agent-company.ts",
     "demo:all": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/run-all.ts",
     "demo:openclaw": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/openclaw-hijack.ts",
-    "demo:github": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/github-mcp.ts"
+    "demo:github": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/github-mcp.ts",
+    "demo:slack": "node ../node_modules/tsx/dist/cli.mjs src/scenarios/slack-mcp.ts"
   },
   "dependencies": {
     "@capnet/shared": "*"

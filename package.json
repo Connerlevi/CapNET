@@ -25,6 +25,7 @@
     "demo:all": "npm run demo:all -w sdk",
     "demo:openclaw": "npm run demo:openclaw -w sdk",
     "demo:github": "npm run demo:github -w sdk",
+    "demo:slack": "npm run demo:slack -w sdk",
     "demo:clean": "node -e \"const fs=require('fs');const p=require('path');const d='data';if(fs.existsSync(d)){fs.readdirSync(d).filter(f=>f.endsWith('.json')||f.endsWith('.jsonl')).forEach(f=>fs.unlinkSync(p.join(d,f)))}\" && echo Data cleared && npm run demo",
     "demo:full": "npm run demo:clean && npm run demo",
     "build": "npm run build:shared && npm run build:extension",

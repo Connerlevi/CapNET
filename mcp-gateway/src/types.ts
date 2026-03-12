@@ -128,9 +128,16 @@ export const DEFAULT_TOOL_CATEGORIES: Record<string, string> = {
   get_pull_request_comments: "git",
   get_pull_request_reviews: "git",
 
-  // Messaging
+  // Messaging / Slack
   send_message: "messaging",
+  slack_list_channels: "messaging",
   slack_post_message: "messaging",
+  slack_reply_to_thread: "messaging",
+  slack_add_reaction: "messaging",
+  slack_get_channel_history: "messaging",
+  slack_get_thread_replies: "messaging",
+  slack_get_users: "messaging",
+  slack_get_user_profile: "messaging",
 };
 
 /** Classify a tool name into a CapNet category */
