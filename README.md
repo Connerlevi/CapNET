@@ -1,8 +1,10 @@
 # CapNet
 
-**Capability-based authorization for AI agents.**
+**CapNet is a permission layer for AI agents.**
 
-Agents shouldn't have credentials. They should have capabilities.
+Instead of giving agents credentials, users issue capabilities that define exactly what actions are allowed. All actions pass through the CapNet proxy, which enforces the rules and logs receipts.
+
+Think of it as **OAuth for actions**.
 
 ---
 
@@ -11,7 +13,52 @@ Today:        AI Agent  →  API Key  →  Everything
 With CapNet:  AI Agent  →  Capability  →  Scoped Authority
 ```
 
-If the agent is buggy, hijacked, or prompt-injected, the damage is contained.
+---
+
+## Developer Quick Start
+
+```typescript
+import { CapNet } from "@capnet/sdk"
+
+const capnet = await CapNet.create()
+const agent  = capnet.agent("my-agent")
+
+// Issue a capability — agent can spend up to $50, no alcohol
+const cap = await agent
+  .spend({ budget: "50 USD", vendors: ["amazon"] })
+  .block("alcohol", "gift_cards")
+  .issue()
+
+// Agent attempts a purchase — proxy enforces the rules
+await cap.purchase([{ sku: "GROC-001", qty: 1 }])  // ✓ ALLOWED
+await cap.purchase([{ sku: "ALC-001",  qty: 1 }])  // ✗ DENIED: CATEGORY_BLOCKED
+
+// Revoke instantly — agent is done
+await cap.revoke()
+```
+
+Works with any agent framework. The agent never sees credentials.
+
+---
+
+## Real-World Use Cases
+
+CapNet isn't just for groceries. Any agent action can be scoped:
+
+| Agent Does | Capability Says |
+|------------|----------------|
+| Sends email via Gmail | Only to `@company.com`, max 10/hour |
+| Charges Stripe | Up to $500, no recurring subscriptions |
+| Deploys to AWS | Only `us-east-1`, no IAM changes |
+| Posts to Slack | Only `#support`, no DMs, no reactions |
+| Merges PRs on GitHub | Only `docs/*` files, no force-push |
+| Schedules calendar | Only your calendar, max 1 hour blocks |
+
+The pattern is always the same:
+
+```
+User issues capability → Agent attempts action → Proxy enforces → Receipt logged
+```
 
 ---
 
@@ -224,115 +271,81 @@ Key principles:
 - Every action produces an audit receipt
 - Capabilities are cryptographically signed (Ed25519)
 
-## Try It in 60 Seconds
+## Try It
 
 ```bash
 git clone https://github.com/Connerlevi/CapNET.git
 cd CapNET
 
 npm install
-npm run build     # Build shared library
-npm run dev       # Starts proxy (3100) + sandbox (3200)
+npm run build
+npm run test:unit       # 77 tests, no server needed
 
-# In another terminal:
-npm run demo      # Full lifecycle demo
+npm run dev             # Start proxy (3100) + sandbox (3200)
+npm run demo            # Full lifecycle demo
+npm run demo:all        # All 6 attack scenarios
 ```
 
-Expected output:
+## SDK Examples
 
-```
-Capability issued       → $50 budget, alcohol blocked
-Groceries purchased     → ALLOWED ($14.47)
-Alcohol attempted       → DENIED: CATEGORY_BLOCKED
-Capability revoked      → Cascade to sub-agent
-Post-revoke purchase    → DENIED: REVOKED
-```
-
-## Example Usage
-
-### High-Level Builder API (recommended)
+### Spend Capability
 
 ```typescript
 import { CapNet } from "@capnet/sdk"
 
-// Connect to proxy
 const capnet = await CapNet.create()
+const agent  = capnet.agent("shopping-bot")
 
-// Create an agent with auto-generated identity
-const agent = capnet.agent("grocery-bot")
-
-// Issue a spend capability
+// Agent can spend up to $200 at Instacart, no alcohol
 const cap = await agent
-  .spend({ budget: "50 USD", vendors: ["sandboxmart"] })
-  .block("alcohol", "gift_cards")
+  .spend({ budget: "200 USD", vendors: ["instacart"] })
+  .block("alcohol", "tobacco")
   .issue()
 
-// Purchase items (validates via sandbox, enforces via proxy)
-await cap.purchase([{ sku: "GRO-001", qty: 1 }])
+// Delegate to a sub-agent with tighter limits
+const subCap = await cap.delegate({ to: "sub-bot", budget: "50 USD" })
 
-// Delegate to a sub-agent with reduced authority
-const subCap = await cap.delegate({
-  to: "sub-bot",
-  budget: "20 USD",
-})
-
-// Revoke (cascades to all delegated sub-capabilities)
+// Revoke — cascades to all delegated sub-capabilities
 await cap.revoke()
 ```
 
-### Tool Call Capabilities
+### Tool Call Capability
 
 ```typescript
-const toolCap = await agent
-  .toolCalls({ tools: ["web_search", "read_file"], maxCalls: 10 })
+// Agent can read code and create PRs, but not merge or push
+const cap = await agent
+  .toolCalls({ tools: ["get_file_contents", "create_pull_request", "list_issues"], maxCalls: 20 })
   .block("shell", "spawn")
   .issue()
 
-// Execute a tool call through enforcement
-await toolCap.execute("web_search", { query: "test" }, "web")
-```
-
-### Typed Error Handling
-
-```typescript
-import { CategoryBlockedError, BudgetExceededError } from "@capnet/sdk"
-
-try {
-  await cap.purchase([{ sku: "ALC-001", qty: 1 }])
-} catch (err) {
-  if (err instanceof CategoryBlockedError) {
-    console.log(`Blocked: ${err.category}`)  // "alcohol"
-  }
-  if (err instanceof BudgetExceededError) {
-    console.log(`Over budget: ${err.requestedCents} > ${err.maxCents}`)
-  }
-}
+await cap.execute("get_file_contents", { path: "src/main.ts" }, "git")     // ✓
+await cap.execute("merge_pull_request", { number: 42 }, "git")              // ✗ DENIED
 ```
 
 ### MCP Gateway (wrap any MCP server)
 
-CapNet can transparently enforce policy on any MCP tool server. The agent
-connects to the gateway via stdio and sees normal MCP tools — but every
-call routes through CapNet policy enforcement.
+CapNet transparently enforces policy on any MCP tool server. The agent sees
+normal MCP tools — but every call routes through CapNet enforcement.
 
 ```bash
-# Wrap GitHub + Slack MCP servers with CapNet enforcement
 capnet-mcp-gateway \
   --upstream "github:npx:-y,@modelcontextprotocol/server-github" \
   --upstream "slack:npx:-y,@modelcontextprotocol/server-slack" \
   --proxy-url http://127.0.0.1:3100
 ```
 
-The agent discovers tools like `create_pull_request`, `slack_post_message`,
-etc. — but can only use tools allowed by its CapNet capability.
-
-### Low-Level Client (escape hatch)
+### Typed Error Handling
 
 ```typescript
-import { CapNetClient } from "@capnet/sdk"
+import { CategoryBlockedError, BudgetExceededError, ToolNotAllowedError } from "@capnet/sdk"
 
-const client = new CapNetClient()
-// Or via high-level API: capnet.raw
+try {
+  await cap.purchase(cart)
+} catch (err) {
+  if (err instanceof CategoryBlockedError) console.log(`Blocked: ${err.category}`)
+  if (err instanceof BudgetExceededError)  console.log(`Over: ${err.requestedCents} > ${err.maxCents}`)
+  if (err instanceof ToolNotAllowedError)  console.log(`Tool denied: ${err.toolName}`)
+}
 ```
 
 ## What CapNet Is NOT
@@ -358,38 +371,21 @@ const client = new CapNetClient()
 
 ## Current Status
 
-**Phase 0 complete. Phase 1: SDK DX overhaul + OpenClaw + MCP Gateway complete.**
+**Working proof-of-concept. Ready for developer testing.**
 
-| Feature | Status |
-|---------|--------|
-| Capability issuance (Ed25519 signed) | Working |
+| What | Status |
+|------|--------|
+| Capability issuance, enforcement, delegation, revocation | Working |
 | Spend enforcement (budget, vendor, category) | Working |
 | Tool-call enforcement (allowed tools, blocked categories) | Working |
-| Delegation / attenuation | Working |
-| Cascade revocation | Working |
-| Audit trail (receipts) | Working |
-| Chrome extension wallet UI | Working |
-| Demo scenarios (6 stories) | Working |
-| MP4 demo recordings (5 videos) | Working |
-| Conformance tests (15/15) | Working |
-| **Builder-pattern SDK** | Working |
-| **Typed error hierarchy** | Working |
-| **Auto-identity (keypair persistence)** | Working |
-| **Budget/duration parsers** | Working |
-| **Tool call interception (protect)** | Working |
-| **SDK tests (46 new)** | Working |
-| **OpenClaw enforcement plugin** | Working |
-| **OpenClaw tests (33 new)** | Working |
-| **MCP Gateway (transparent enforcement)** | Working |
-| **MCP Gateway tests (19 new)** | Working |
-| **GitHub MCP demo scenario** | Working |
-| **Slack MCP demo scenario** | Working |
-| **Total tests: 115** | Working |
-| **CI pipeline (GitHub Actions)** | Working |
+| MCP Gateway (wrap any MCP server) | Working |
+| OpenClaw plugin | Working |
+| Chrome extension wallet | Working |
+| Builder SDK with typed errors | Working |
+| 115 tests + CI pipeline | Passing |
+| 6 demo scenarios | Working |
 
-**Next:**
-
-- SaaS integrations (Stripe test-mode, GitHub API)
+**Next:** Real agent integrations (Stripe test-mode, GitHub API, developer feedback)
 
 ## Roadmap
 
@@ -416,27 +412,29 @@ data/            Runtime storage         — Keys, caps, receipts (gitignored)
 ## Scripts
 
 ```bash
+npm run build         # Build shared + extension
 npm run dev           # Start proxy + sandbox
+npm run test:unit     # 77 unit tests (no proxy needed)
+npm test              # All 115 tests (proxy + sandbox must be running)
+npm run typecheck     # Typecheck all packages
 npm run demo          # Core lifecycle demo
+npm run demo:all      # All 6 scenarios
+npm run demo:clean    # Clear data + run demo
 npm run demo:runaway  # Scenario: Runaway Agent
 npm run demo:hijack   # Scenario: Agent Hijack
 npm run demo:company  # Scenario: Multi-Agent Company
 npm run demo:openclaw # Scenario: OpenClaw Hijack
 npm run demo:github   # Scenario: GitHub MCP Rogue Agent
 npm run demo:slack    # Scenario: Slack MCP Chatty Agent
-npm run demo:all      # Run all 6 scenarios
-npm run demo:clean    # Clear data + run demo
-npm test              # Run all tests (115: 15 conformance + 46 SDK + 33 OpenClaw + 21 MCP Gateway)
-npm run build         # Build shared + extension
-npm run typecheck     # Typecheck all packages (incl. openclaw-plugin, mcp-gateway)
 ```
 
 ## Documentation
 
 | Doc | Purpose |
 |-----|---------|
-| [TESTER_GUIDE.md](TESTER_GUIDE.md) | Complete guide: setup, scenarios, FAQ |
-| [TESTING_QUICKSTART.md](TESTING_QUICKSTART.md) | 5-minute setup |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, project structure, how to contribute |
+| [TESTING_QUICKSTART.md](TESTING_QUICKSTART.md) | 5-minute testing setup |
+| [TESTER_GUIDE.md](TESTER_GUIDE.md) | Complete tester manual: scenarios, FAQ |
 | [TEST_RUNBOOK.md](TEST_RUNBOOK.md) | Detailed test procedures |
 | [CAPNET_CONTEXT.md](CAPNET_CONTEXT.md) | Vision, thesis, design principles |
 | [docs/spec_v0.1.md](docs/spec_v0.1.md) | Technical specification |
@@ -445,9 +443,11 @@ npm run typecheck     # Typecheck all packages (incl. openclaw-plugin, mcp-gatew
 
 We are especially interested in:
 
-- Agent framework integrations
+- **Agent integrations** — wrap your agent's actions through CapNet
 - Policy engine improvements
 - Security reviews
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.
 
 ---
 
