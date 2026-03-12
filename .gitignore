@@ -18,3 +18,8 @@ CapNET/
 
 # Claude Code worktrees
 .claude/
+
+# Removed internal files (kept locally)
+CapDoc v0.1*
+*.docx
+*.pdf

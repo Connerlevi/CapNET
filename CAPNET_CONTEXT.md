@@ -494,7 +494,7 @@ The behavioral intelligence roadmap describes CapNet's evolution from **rules â†
 
 **Key strategic asset:** The receipt stream is a behavioral dataset no one else has. Most security products only see what happened. CapNet sees what was attempted. Denied actions are as valuable as allowed ones.
 
-See `CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md` for full technical specification.
+See `docs/internal/CAPNET_BEHAVIORAL_INTELLIGENCE_ROADMAP.md` for full technical specification.
 
 ### Phase 1 Integration Targets (pick one to prove "not a toy")
 
